@@ -7,7 +7,7 @@ name = "pypi"
 django = "*"
 djangorestframework = "*"
 psycopg2 = "*"
-django-environ = "*"
+python-dotenv = "*"
 
 [dev-packages]
 
