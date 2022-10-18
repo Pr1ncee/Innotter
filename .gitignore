@@ -1,2 +1,3 @@
 .idea/
-./innotter/innotter/settings.py
+innotter/innotter/settings.py
+*.env
