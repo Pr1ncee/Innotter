@@ -18,6 +18,9 @@ REFRESH_TOKEN_LIFE_TIME = config["REFRESH_TOKEN_LIFE_TIME"]
 
 
 class ObtainTokens(APIView):
+    """
+    Take user's credentials. If the serialized creds are valid, return access and refresh tokens.
+    """
     serializer_class = ObtainTokensSerializer
 
     def post(self, request):
@@ -44,6 +47,9 @@ class ObtainTokens(APIView):
 
 
 class TokenRefresh(APIView):
+    """
+    Take refresh token. If the given serialized token is valid, return valid access token.
+    """
     serializer_class = TokenRefreshSerializer
 
     def post(self, request):
@@ -68,6 +74,9 @@ class TokenRefresh(APIView):
 
 
 class TokenVerify(APIView):
+    """
+    Take access token. Return whether the serialized token is valid or not.
+    """
     serializer_class = TokenVerifySerializer
 
     def post(self, request):
@@ -84,6 +93,11 @@ class TokenVerify(APIView):
 
 
 def get_access_token(user_id):
+    """
+    Take user id as payload and create valid access token.
+    :param user_id: integer value, represents id of user.
+    :return: valid access token.
+    """
     access_payload = {"user_id": user_id,
                       "iss": "innotter",
                       "exp": datetime.now(tz=timezone.utc) + timedelta(seconds=int(ACCESS_TOKEN_LIFE_TIME))}
@@ -93,6 +107,11 @@ def get_access_token(user_id):
 
 
 def token_verify(token):
+    """
+    Verify whether the given token is valid or not.
+    :param token: either access or refresh token.
+    :return: data corresponding to the token.
+    """
     if token:
         try:
             jwt.decode(token, SECRET_KEY, algorithms=[SIGNING_METHOD])
