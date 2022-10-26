@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from posts.models import Tag, Post, Page
+
+
+admin.site.register([Tag, Post, Page])
