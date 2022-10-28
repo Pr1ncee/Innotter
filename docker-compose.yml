@@ -3,12 +3,12 @@ version: "3.9"
 services:
   db:
     image: postgres
-    environment:
-      - POSTGRES_USER=root
-      - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=innotter_db
+    env_file:
+      - ./innotter/.env
     expose:
       - "5432"
+    volumes:
+      - ./data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
       interval: 30s
@@ -17,6 +17,8 @@ services:
 
   innotter:
     build: innotter
+    expose:
+      - "8000"
     ports:
       - "8000:8000"
     depends_on:
@@ -24,4 +26,4 @@ services:
     env_file:
       - ./innotter/.env
     volumes:
-      - ./innotter:/innotter_data
+      - ./innotter:/app

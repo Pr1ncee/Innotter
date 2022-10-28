@@ -29,7 +29,7 @@ class Page(models.Model):
 
     is_private = models.BooleanField(default=False)
 
-    image = models.URLField(null=True, blank=True)
+    image = models.CharField(max_length=1024, null=True, blank=True)
 
     unblock_date = models.DateField(null=True, blank=True)
 

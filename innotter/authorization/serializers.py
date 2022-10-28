@@ -22,7 +22,7 @@ class CredentialsSerializer(serializers.Serializer):
 
         user = authenticate(**authenticate_kwargs)
 
-        if not (user is not None and user.is_active):
+        if not (user and user.is_active):
             raise exceptions.AuthenticationFailed('Access denied: no active account')
 
         data['user'] = user
@@ -66,14 +66,14 @@ class TokenVerifySerializer(serializers.Serializer):
     access_token = serializers.CharField(max_length=1024)
 
 
-class ObtainTokensSerializer(CredentialsSerializer):
+class LoginSerializer(CredentialsSerializer):
     """
     Use CredentialsSerializer to (de)serialize and validate the given credentials.
     """
     pass
 
 
-class LoginSerializer(CredentialsSerializer):
+class LogoutSerilaizer(CredentialsSerializer):
     """
     Use CredentialsSerializer to (de)serialize and validate the given credentials.
     """

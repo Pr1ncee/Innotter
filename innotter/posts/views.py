@@ -1,23 +1,43 @@
+from datetime import date
+
+from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
 from rest_framework import viewsets, mixins
 
+from authorization.permissions import IsModerator
 from .models import Page, Post
 from user.models import User
-from .serializers import PageSerializer, CreateListUpdatePageSerializer, \
-                         DestroyTagSerializer, CreateListUpdateDestroyPostSerializer, ListLikedPostSerializer
+from .serializers import CreateListUpdatePageSerializer, ListAllPagesSerializer, \
+                         DestroyTagSerializer, CreateListUpdateDestroyPostSerializer,\
+                         ListLikedPostSerializer, ManagerPageSerializer, ManagerPostSerializer, AdminUserSerializer
+
+
+class ListAllPagesViewSet(mixins.ListModelMixin,
+                          viewsets.GenericViewSet):
+    """
+    Allow any user to readonly all the pages.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = ListAllPagesSerializer
+    queryset = Page.objects.exclude(owner__is_blocked=True)\
+                           .exclude(unblock_date__gt=date.today()).exclude(is_private=True)
 
 
 class CreateListPageViewSet(mixins.ListModelMixin,
                             mixins.CreateModelMixin,
                             viewsets.GenericViewSet):
     """
-    Implement list and create methods of Page model.
+    Implement 'list' and 'create' methods of Page model.
     Overridden 'create' method validate given data
     And link 'owner' field of Page model to user, who sent the data.
     """
     serializer_class = CreateListUpdatePageSerializer
-    queryset = Page.objects.all()
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Page.objects.filter(owner=user_id)
 
     def create(self, request, *args, **kwargs):
         user = User.objects.get(pk=request.user.id)
@@ -34,13 +54,19 @@ class CreateListPageViewSet(mixins.ListModelMixin,
         return Response(serializer.data, status=HTTP_201_CREATED)
 
 
-class UpdatePageViewSet(mixins.UpdateModelMixin,
+class UpdatePageViewSet(mixins.RetrieveModelMixin,
+                        mixins.UpdateModelMixin,
+                        mixins.DestroyModelMixin,
                         viewsets.GenericViewSet):
     """
-    Implement both 'put' & 'patch' methods of Page model.
+    Implement both 'put' & 'patch' methods and also provide 'destroy' method of Page model.
     """
     serializer_class = CreateListUpdatePageSerializer
-    queryset = Page.objects.all()
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Page.objects.filter(owner=user_id)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -58,14 +84,18 @@ class UpdatePageViewSet(mixins.UpdateModelMixin,
         return Response(serializer.data)
 
 
-class DestroyTagViewSet(mixins.DestroyModelMixin,
-                        mixins.RetrieveModelMixin,
+class DestroyTagViewSet(mixins.RetrieveModelMixin,
+                        mixins.DestroyModelMixin,
                         viewsets.GenericViewSet):
     """
-    Destroy last added tag in Page model.
+    Destroy latest added tag in Page model.
     """
     serializer_class = DestroyTagSerializer
-    queryset = Page.objects.all()
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Page.objects.filter(owner=user_id)
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -82,8 +112,23 @@ class RetrieveFollowRequestsViewSet(mixins.RetrieveModelMixin,
     """
     Retrieve page's followers and follow requests according to given page's id.
     """
-    serializer_class = PageSerializer
-    queryset = Page.objects.all()
+    serializer_class = CreateListUpdatePageSerializer
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Page.objects.filter(owner=user_id)
+
+
+class ListAllPostsViewSet(mixins.ListModelMixin,
+                          viewsets.GenericViewSet):
+    """
+    Allow any user to readonly all the posts.
+    """
+    permission_classes = [AllowAny]
+    serializer_class = CreateListUpdateDestroyPostSerializer
+    queryset = Post.objects.exclude(lovers__is_blocked=True)\
+                           .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
 
 
 class CreateListPostViewSet(mixins.ListModelMixin,
@@ -93,18 +138,26 @@ class CreateListPostViewSet(mixins.ListModelMixin,
     Implement 'list' & 'create' methods of Post model.
     """
     serializer_class = CreateListUpdateDestroyPostSerializer
-    queryset = Post.objects.all()
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Post.objects.filter(page__owner_id=user_id)
 
 
-class UpdateDestroyPostViewSet(mixins.UpdateModelMixin,
-                               mixins.RetrieveModelMixin,
+class UpdateDestroyPostViewSet(mixins.RetrieveModelMixin,
+                               mixins.UpdateModelMixin,
                                mixins.DestroyModelMixin,
                                viewsets.GenericViewSet):
     """
     Implement both 'put' & 'patch' and 'destroy' methods of Post model.
     """
     serializer_class = CreateListUpdateDestroyPostSerializer
-    queryset = Post.objects.all()
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Post.objects.filter(page__owner_id=user_id)
 
 
 class ListLikedPostViewSet(mixins.ListModelMixin,
@@ -112,7 +165,42 @@ class ListLikedPostViewSet(mixins.ListModelMixin,
     """
     List user's liked posts.
     """
-    # TODO link volumes to the container
     serializer_class = ListLikedPostSerializer
-    queryset = User.objects.all()
 
+    def get_queryset(self):
+        user = self.request.user
+
+        return Post.objects.filter(lovers=user)
+
+
+class ManagerPageViewSet(mixins.RetrieveModelMixin,
+                         mixins.UpdateModelMixin,
+                         viewsets.GenericViewSet):
+    """
+    Allow moderators and administrators to manipulate with users' pages.
+    """
+    permission_classes = [IsAdminUser | IsModerator]
+    serializer_class = ManagerPageSerializer
+    queryset = Page.objects.all()
+
+
+class ManagerPostViewSet(mixins.RetrieveModelMixin,
+                         mixins.DestroyModelMixin,
+                         viewsets.GenericViewSet):
+    """
+    Allow moderators and administrators to manipulate with user's posts.
+    """
+    permission_classes = [IsAdminUser | IsModerator]
+    serializer_class = ManagerPostSerializer
+    queryset = Post.objects.all()
+
+
+class AdminUserViewSet(mixins.RetrieveModelMixin,
+                       mixins.UpdateModelMixin,
+                       viewsets.GenericViewSet):
+    """
+    Allow administrators ban users.
+    """
+    permission_classes = [IsAdminUser]
+    serializer_class = AdminUserSerializer
+    queryset = User.objects.all()

@@ -13,9 +13,7 @@ RUN pipenv install --system --deploy --ignore-pipfile
 
 COPY . /app
 
-EXPOSE 8000
-
+RUN chown -R root /app
 RUN chmod +x /app/start-server.sh
 
 CMD ["/app/start-server.sh"]
-
