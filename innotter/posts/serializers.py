@@ -19,8 +19,9 @@ class CreateListUpdatePageSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Page
-        exclude = ['owner']
-        read_only_fields = ['followers', 'follow_requests', 'unblock_date']
+        fields = ['name', 'uuid', 'description', 'tags', 'followers',
+                  'follow_requests', 'is_private', 'image', 'unblock_date', 'posts']
+        read_only_fields = ['followers', 'follow_requests', 'unblock_date', 'posts']
 
 
 class RetrieveUpdatePageFollowRequestsSerializer(serializers.ModelSerializer):

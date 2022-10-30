@@ -26,7 +26,7 @@ class ListAllPagesViewSet(mixins.ListModelMixin,
                            .exclude(unblock_date__gt=date.today()).exclude(is_private=True)
 
 
-class CreateListPageViewSet(mixins.ListModelMixin,
+class ListCreatePageViewSet(mixins.ListModelMixin,
                             mixins.CreateModelMixin,
                             viewsets.GenericViewSet):
     """
@@ -39,7 +39,8 @@ class CreateListPageViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Page.objects.filter(owner=user_id)
+        queryset = Page.objects.filter(owner=user_id)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(data=request.data)
@@ -48,10 +49,10 @@ class CreateListPageViewSet(mixins.ListModelMixin,
         return Response(serializer.data, status=HTTP_201_CREATED)
 
 
-class UpdatePageViewSet(mixins.RetrieveModelMixin,
-                        mixins.UpdateModelMixin,
-                        mixins.DestroyModelMixin,
-                        viewsets.GenericViewSet):
+class RetrieveUpdateDestroyPageViewSet(mixins.RetrieveModelMixin,
+                                       mixins.UpdateModelMixin,
+                                       mixins.DestroyModelMixin,
+                                       viewsets.GenericViewSet):
     """
     Implement both 'put' & 'patch' methods and also provide 'destroy' method of Page model.
     """
@@ -60,7 +61,8 @@ class UpdatePageViewSet(mixins.RetrieveModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Page.objects.filter(owner=user_id)
+        queryset = Page.objects.filter(owner=user_id)
+        return queryset
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
@@ -72,9 +74,9 @@ class UpdatePageViewSet(mixins.RetrieveModelMixin,
         return Response(serializer.data)
 
 
-class DestroyPageTagViewSet(mixins.RetrieveModelMixin,
-                            mixins.DestroyModelMixin,
-                            viewsets.GenericViewSet):
+class RetrieveDestroyPageTagViewSet(mixins.RetrieveModelMixin,
+                                    mixins.DestroyModelMixin,
+                                    viewsets.GenericViewSet):
     """
     Destroy latest added tag in Page model.
     """
@@ -83,7 +85,8 @@ class DestroyPageTagViewSet(mixins.RetrieveModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Page.objects.filter(owner=user_id)
+        queryset = Page.objects.filter(owner=user_id)
+        return queryset
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -120,7 +123,8 @@ class AcceptPageFollowRequestViewSet(mixins.RetrieveModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Page.objects.filter(owner=user_id)
+        queryset = Page.objects.filter(owner=user_id)
+        return queryset
 
     def perform_update(self, serializer):
         page = self.get_object()
@@ -140,7 +144,8 @@ class DenyPageFollowRequestViewSet(mixins.RetrieveModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Page.objects.filter(owner=user_id)
+        queryset = Page.objects.filter(owner=user_id)
+        return queryset
 
     def perform_update(self, serializer):
         page = self.get_object()
@@ -160,6 +165,29 @@ class ListAllPostsViewSet(mixins.ListModelMixin,
                            .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
 
 
+class ListFollowedMyPostsViewSet(mixins.ListModelMixin,
+                                 viewsets.GenericViewSet):
+    serializer_class = CreateListUpdateDestroyPostSerializer
+
+    def get_queryset(self):
+        """
+        Displayed posts are filtered based on user's owned posts and followed pages.
+        Each post belongs to certain page. Follow page means follow post as well.
+
+        'user': user who made a request.
+        'my_posts': Queryset object which is made of user's posts.
+        'followed_posts': Queryset object which is made of valid followed posts.
+        'queryset': Queryset object which is a distinct union of 'my_posts' & 'followed_posts'.
+        """
+        user_id = self.request.user.id
+        user = User.objects.get(pk=user_id)
+
+        my_posts = Post.objects.filter(page__owner=user)
+        followed_posts = Post.objects.filter(page__followers=user).exclude(page__unblock_date__gt=date.today())
+        queryset = (my_posts | followed_posts).distinct()
+        return queryset
+
+
 class CreateListPostViewSet(mixins.ListModelMixin,
                             mixins.CreateModelMixin,
                             viewsets.GenericViewSet):
@@ -171,7 +199,8 @@ class CreateListPostViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Post.objects.filter(page__owner_id=user_id)
+        queryset = Post.objects.filter(page__owner_id=user_id)
+        return queryset
 
 
 class UpdateDestroyPostViewSet(mixins.RetrieveModelMixin,
@@ -186,7 +215,8 @@ class UpdateDestroyPostViewSet(mixins.RetrieveModelMixin,
     def get_queryset(self):
         user_id = self.request.user.id
 
-        return Post.objects.filter(page__owner_id=user_id)
+        queryset = Post.objects.filter(page__owner_id=user_id)
+        return queryset
 
 
 class ListLikedPostViewSet(mixins.ListModelMixin,
@@ -199,7 +229,8 @@ class ListLikedPostViewSet(mixins.ListModelMixin,
     def get_queryset(self):
         user = self.request.user
 
-        return Post.objects.filter(liked_by=user)
+        queryset = Post.objects.filter(liked_by=user)
+        return queryset
 
 
 class RetrieveUpdatePostLikeViewSet(mixins.RetrieveModelMixin,
