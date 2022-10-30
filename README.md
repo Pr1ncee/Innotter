@@ -1,2 +1,0 @@
-# Innotter
-Twitter Analog

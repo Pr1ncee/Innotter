@@ -2,7 +2,3 @@
 innotter/innotter/settings.py
 *.env
 data
-innotter/innotter/__pycache__/
-innotter/authorization/__pycache__/
-innotter/user/__pycache__/
-innotter/posts/__pycache__/
