@@ -184,7 +184,7 @@ class ListFollowedMyPostsViewSet(mixins.ListModelMixin,
 
         my_posts = Post.objects.filter(page__owner=user)
         followed_posts = Post.objects.filter(page__followers=user).exclude(page__unblock_date__gt=date.today())
-        queryset = (my_posts | followed_posts).distinct()
+        queryset = (my_posts | followed_posts).distinct().order_by('-created_at', '-id')
         return queryset
 
 
