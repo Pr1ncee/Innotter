@@ -19,7 +19,7 @@ ACCESS_TOKEN_LIFE_TIME = settings.ACCESS_TOKEN_LIFE_TIME
 REFRESH_TOKEN_LIFE_TIME = settings.REFRESH_TOKEN_LIFE_TIME
 
 
-class TokenRefresh(APIView):
+class UserTokenRefreshApi(APIView):
     """
     Take refresh token. If the given deserialized token is valid, return valid access token.
     """
@@ -44,7 +44,7 @@ class TokenRefresh(APIView):
         return Response(data, status=status_code)
 
 
-class TokenVerify(APIView):
+class UserTokenVerifyApi(APIView):
     """
     Take access token. Return whether the deserialized token is valid or not.
     """
@@ -60,7 +60,7 @@ class TokenVerify(APIView):
         return Response(data, status=status_code)
 
 
-class SigninView(APIView):
+class UserSigninApi(APIView):
     """
     Implement user signin, return status=202.
     """
@@ -85,7 +85,7 @@ class SigninView(APIView):
         return Response(data, status=status.HTTP_202_ACCEPTED)
 
 
-class SignoutView(APIView):
+class UserSignoutApi(APIView):
     """
     Implement user signout, return status=204
     """
@@ -97,7 +97,7 @@ class SignoutView(APIView):
         return Response(None, status=status.HTTP_204_NO_CONTENT)
 
 
-class SignupView(APIView):
+class UserSignupApi(APIView):
     """
     Implement user signup, return status=202.
     """

@@ -13,7 +13,7 @@ class User(AbstractUser):
     image_path = models.CharField(max_length=200, null=True, blank=True)
     role = models.CharField(max_length=9, choices=Roles.choices, default=Roles.USER)
     is_blocked = models.BooleanField(default=False)
-    liked = models.ForeignKey('posts.Post', on_delete=models.SET_NULL, null=True, blank=True, related_name="lovers")
+    liked = models.ManyToManyField('posts.Post', null=True, blank=True, related_name='liked_by')
     refresh_token = models.CharField(max_length=1024, blank=True)
 
     def __str__(self):

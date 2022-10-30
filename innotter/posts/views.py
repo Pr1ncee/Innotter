@@ -9,14 +9,16 @@ from authorization.permissions import IsModerator
 from .models import Page, Post
 from user.models import User
 from .serializers import CreateListUpdatePageSerializer, ListAllPagesSerializer, \
-                         DestroyTagSerializer, CreateListUpdateDestroyPostSerializer,\
-                         ListLikedPostSerializer, ManagerPageSerializer, ManagerPostSerializer, AdminUserSerializer
+                         DestroyPageTagSerializer, CreateListUpdateDestroyPostSerializer,\
+                         ListRetrieveUpdateLikedPostSerializer, ManagerPageSerializer, ManagerPostSerializer,\
+                         AdminUserSerializer, UpdatePageFollowersSerializer, RetrieveUpdatePageFollowRequestsSerializer
+from .services import page_create, page_update, page_follow, page_response_follow_request, page_destroy_tag, post_like
 
 
 class ListAllPagesViewSet(mixins.ListModelMixin,
                           viewsets.GenericViewSet):
     """
-    Allow any user to readonly all the pages.
+    Allow any user to readonly all the pages. List only valid pages.
     """
     permission_classes = [AllowAny]
     serializer_class = ListAllPagesSerializer
@@ -40,16 +42,8 @@ class CreateListPageViewSet(mixins.ListModelMixin,
         return Page.objects.filter(owner=user_id)
 
     def create(self, request, *args, **kwargs):
-        user = User.objects.get(pk=request.user.id)
-
         serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.validated_data['owner'] = user
-        tag = serializer.validated_data.pop('tags')
-
-        new_page = Page.objects.create(**serializer.validated_data)
-        new_page.tags.set(tag)
-        new_page.save()
+        page_create(request, serializer)
 
         return Response(serializer.data, status=HTTP_201_CREATED)
 
@@ -72,25 +66,19 @@ class UpdatePageViewSet(mixins.RetrieveModelMixin,
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
 
-        # List of Tag objects
-        tags_list = serializer.validated_data.pop('tags')
-        # Several tags can be possibly sent, that's why we loop through the give list
-        for tag in tags_list:
-            instance.tags.add(tag)
-        serializer.save()
+        page_update(serializer, instance)
 
         return Response(serializer.data)
 
 
-class DestroyTagViewSet(mixins.RetrieveModelMixin,
-                        mixins.DestroyModelMixin,
-                        viewsets.GenericViewSet):
+class DestroyPageTagViewSet(mixins.RetrieveModelMixin,
+                            mixins.DestroyModelMixin,
+                            viewsets.GenericViewSet):
     """
     Destroy latest added tag in Page model.
     """
-    serializer_class = DestroyTagSerializer
+    serializer_class = DestroyPageTagSerializer
 
     def get_queryset(self):
         user_id = self.request.user.id
@@ -99,35 +87,76 @@ class DestroyTagViewSet(mixins.RetrieveModelMixin,
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        # Delete last added tag
-        tag_to_delete = instance.tags.last()
-        instance.tags.remove(tag_to_delete)
-        instance.save()
+        page_destroy_tag(instance)
 
         return Response(status=HTTP_200_OK)
 
 
-class RetrieveFollowRequestsViewSet(mixins.RetrieveModelMixin,
-                                    viewsets.GenericViewSet):
+class RetrieveUpdatePageFollowersViewSet(mixins.RetrieveModelMixin,
+                                         mixins.UpdateModelMixin,
+                                         viewsets.GenericViewSet):
     """
-    Retrieve page's followers and follow requests according to given page's id.
+    Allow user to follow or send follow request to page. List only valid pages.
     """
-    serializer_class = CreateListUpdatePageSerializer
+    serializer_class = UpdatePageFollowersSerializer
+    queryset = Page.objects.exclude(owner__is_blocked=True) \
+                           .exclude(unblock_date__gt=date.today())
+
+    def perform_update(self, serializer):
+        page = self.get_object()
+        info = page_follow(self.request, page)
+
+        return Response(data=info, status=HTTP_200_OK)
+
+
+class AcceptPageFollowRequestViewSet(mixins.RetrieveModelMixin,
+                                     mixins.UpdateModelMixin,
+                                     viewsets.GenericViewSet):
+    """
+    Allow page owner to accept follow requests.
+    """
+    serializer_class = RetrieveUpdatePageFollowRequestsSerializer
 
     def get_queryset(self):
         user_id = self.request.user.id
 
         return Page.objects.filter(owner=user_id)
 
+    def perform_update(self, serializer):
+        page = self.get_object()
+        page_response_follow_request(page, mode='accept')
+
+        return Response(status=HTTP_200_OK)
+
+
+class DenyPageFollowRequestViewSet(mixins.RetrieveModelMixin,
+                                   mixins.UpdateModelMixin,
+                                   viewsets.GenericViewSet):
+    """
+    Allow page owner to deny follow requests.
+    """
+    serializer_class = RetrieveUpdatePageFollowRequestsSerializer
+
+    def get_queryset(self):
+        user_id = self.request.user.id
+
+        return Page.objects.filter(owner=user_id)
+
+    def perform_update(self, serializer):
+        page = self.get_object()
+        page_response_follow_request(page, mode='deny')
+
+        return Response(status=HTTP_200_OK)
+
 
 class ListAllPostsViewSet(mixins.ListModelMixin,
                           viewsets.GenericViewSet):
     """
-    Allow any user to readonly all the posts.
+    Allow any user to readonly all the posts. List only valid posts
     """
     permission_classes = [AllowAny]
     serializer_class = CreateListUpdateDestroyPostSerializer
-    queryset = Post.objects.exclude(lovers__is_blocked=True)\
+    queryset = Post.objects.exclude(liked_by__is_blocked=True)\
                            .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
 
 
@@ -165,12 +194,29 @@ class ListLikedPostViewSet(mixins.ListModelMixin,
     """
     List user's liked posts.
     """
-    serializer_class = ListLikedPostSerializer
+    serializer_class = ListRetrieveUpdateLikedPostSerializer
 
     def get_queryset(self):
         user = self.request.user
 
-        return Post.objects.filter(lovers=user)
+        return Post.objects.filter(liked_by=user)
+
+
+class RetrieveUpdatePostLikeViewSet(mixins.RetrieveModelMixin,
+                                    mixins.UpdateModelMixin,
+                                    viewsets.GenericViewSet):
+    """
+    Provide 'like' page method. List only valid liked posts.
+    """
+    serializer_class = ListRetrieveUpdateLikedPostSerializer
+    queryset = Post.objects.exclude(liked_by__is_blocked=True) \
+                           .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
+
+    def perform_update(self, serializer):
+        post = self.get_object()
+        post_like(self.request, post)
+
+        return Response(status=HTTP_200_OK)
 
 
 class ManagerPageViewSet(mixins.RetrieveModelMixin,
