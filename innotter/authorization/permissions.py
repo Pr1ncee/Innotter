@@ -7,4 +7,4 @@ class IsModerator(permissions.BasePermission):
     """
     def has_permission(self, request, view):
         moderator = request.user.Roles.MODERATOR
-        return bool(request.user and request.user.role == moderator)
+        return request.user and request.user.role == moderator

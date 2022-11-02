@@ -1,8 +1,10 @@
 from typing import Any
 
+from django.db import models
+from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT
 from rest_framework.request import Request
 
-from posts.serializers import CreateListUpdatePageSerializer
+from posts.serializers import CreateListUpdatePageSerializer, ManagerPageSerializer, ManagerPostSerializer
 from posts.models import Page, Post
 from user.models import User
 
@@ -35,10 +37,20 @@ def page_update(serializer: CreateListUpdatePageSerializer, instance: Page) -> N
     serializer.is_valid(raise_exception=True)
 
     # Get list of tags and loop through the list, 'cause user is able to send several tags to add.
-    tags_list = serializer.validated_data.pop('tags')
-    [instance.tags.add(tag) for tag in tags_list]
+    tags_list = serializer.validated_data.pop('tags', False)
+    if tags_list:
+        [instance.tags.add(tag) for tag in tags_list]
 
     serializer.save()
+
+
+def page_delete(instance: models.Model) -> None:
+    """
+    Delete a recording.
+    :param instance: any Model object.
+    :return: None.
+    """
+    instance.delete()
 
 
 def page_follow(request: Request, instance: Page) -> dict[str]:
@@ -62,11 +74,11 @@ def page_follow(request: Request, instance: Page) -> dict[str]:
     return {'info': msg}
 
 
-def page_response_follow_request(instance: Page, mode: str) -> None:
+def page_response_follow_request(instance: Page, mode: str) -> Page:
     """
     Provide page's owner to accept or deny follow request.
     :param instance: page request was sent to.
-    :param mode: represents two actions: 'accept' and 'deny'.
+    :param mode: implements two actions: 'accept' and 'deny'.
     :return: None.
     """
     user_to_response = instance.follow_requests.last()
@@ -81,9 +93,10 @@ def page_response_follow_request(instance: Page, mode: str) -> None:
                 instance.follow_requests.remove(user_to_response)
 
         perform_save(instance)
+        return instance
 
 
-def page_destroy_tag(instance: Page) -> None:
+def page_destroy_tag(instance: Page) -> Page:
     """
     Take last tag in page's tags and remove it.
     :param instance: page tag to be removed.
@@ -93,6 +106,7 @@ def page_destroy_tag(instance: Page) -> None:
     instance.tags.remove(tag_to_delete)
 
     perform_save(instance)
+    return instance
 
 
 def post_like(request: Request, instance: Post) -> None:
@@ -105,6 +119,35 @@ def post_like(request: Request, instance: Post) -> None:
     user = User.objects.get(pk=request.user.id)
     user.liked.add(instance)
     perform_save(user)
+
+
+def manager_view(request: Request, given_serializer: ManagerPageSerializer | ManagerPostSerializer,
+                 instance: Post | Page,
+                 *args: Any, **kwargs: Any) -> tuple[ManagerPageSerializer | ManagerPostSerializer, int]:
+    """
+    Generalized function for moderating both pages and posts
+    :param request: sent request from client
+    :param given_serializer: serializer of Page or Post model
+    :param instance: Page or Post object. Represents the page or the post is being manipulated.
+    :param args: additional args.
+    :param kwargs: dictionary, that contains type of update.
+    :return: serialized data and corresponding status code.
+    """
+    partial = kwargs.pop('partial', False)
+    status_code = None
+    serializer = given_serializer(instance, data=request.data, partial=partial)
+    serializer.is_valid()
+
+    match request.method:
+        case 'PUT':
+            page_update(serializer, instance)
+            status_code = HTTP_200_OK
+        case 'DELETE':
+            page_delete(instance)
+            status_code = HTTP_204_NO_CONTENT
+
+    serializer.save()
+    return serializer, status_code
 
 
 def perform_save(obj: Any) -> None:

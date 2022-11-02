@@ -1,22 +1,25 @@
-import json
-
-from django.http import HttpResponse
+from django.contrib.auth.middleware import get_user
+from django.contrib.auth.models import AnonymousUser
+from django.core.handlers.wsgi import WSGIRequest
 from django.utils.deprecation import MiddlewareMixin
-from rest_framework.status import HTTP_200_OK
+from django.utils.functional import SimpleLazyObject
 
-from authorization.views import token_verify
+from authorization.auth_service import AuthService
+from user.models import User
 
 
 class CustomJWTAuthenticationMiddleware(MiddlewareMixin):
-    def process_request(self, request):
-        if request.user.is_authenticated:
-            jwt_token = request.headers.get('authorization', None)
+    def process_request(self, request: WSGIRequest) -> None:
+        request.user = SimpleLazyObject(lambda: self.__class__.get_user_jwt(request))
 
-            data, status = token_verify(jwt_token)
-            if status != HTTP_200_OK:
-                response = {'data': data, 'status': status, 'code': 4001}
-                json_response = json.dumps(response)
-                return HttpResponse(json_response, status=status)
+    @staticmethod
+    def get_user_jwt(request: WSGIRequest) -> AnonymousUser | User:
+        user_jwt = get_user(request)
+        if user_jwt.is_authenticated:
+            return user_jwt
 
-        else:
-            pass
+        token = request.META.get('HTTP_AUTHORIZATION', None)
+        if token:
+            data, status, user_jwt = AuthService.user_token_verify(token)
+
+        return user_jwt

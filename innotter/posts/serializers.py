@@ -4,73 +4,64 @@ from user.models import User
 from .models import Page, Post
 
 
-class ListAllPagesSerializer(serializers.ModelSerializer):
+class PagesSerializer(serializers.ModelSerializer):
     """
     (De)Serialize Page model to allow any user browse existed pages.
     """
     class Meta:
         model = Page
-        exclude = ['unblock_date', 'follow_requests']
+        exclude = ('unblock_date', 'follow_requests')
 
 
-class CreateListUpdatePageSerializer(serializers.ModelSerializer):
+class MyPagesSerializer(serializers.ModelSerializer):
     """
     (De)Serialize Page model to allow an owner to look through and edit his pages.
     """
     class Meta:
         model = Page
-        fields = ['name', 'uuid', 'description', 'tags', 'followers',
-                  'follow_requests', 'is_private', 'image', 'unblock_date', 'posts']
-        read_only_fields = ['followers', 'follow_requests', 'unblock_date', 'posts']
+        fields = ('name', 'uuid', 'description', 'tags', 'followers',
+                  'follow_requests', 'is_private', 'image', 'unblock_date', 'posts')
+        read_only_fields = ('followers', 'follow_requests', 'unblock_date', 'posts')
 
 
-class RetrieveUpdatePageFollowRequestsSerializer(serializers.ModelSerializer):
+class PageFollowRequestsSerializer(serializers.ModelSerializer):
     """
     Provide appropriate data for follow methods.
     """
     class Meta:
         model = Page
-        exclude = ['owner']
-        read_only_fields = ['name', 'uuid', 'description', 'tags',
-                            'followers', 'is_private', 'unblock_date', 'image']
+        exclude = ('owner',)
+        read_only_fields = ('name', 'uuid', 'description', 'tags',
+                            'followers', 'is_private', 'unblock_date', 'image')
 
 
-class DestroyPageTagSerializer(serializers.ModelSerializer):
+class PageTagsSerializer(serializers.ModelSerializer):
     """
     Serializer for destroying page's tags.
     """
     class Meta:
         model = Page
-        fields = ['name', 'tags']
+        fields = ('name', 'tags')
 
 
-class UpdatePageFollowersSerializer(serializers.ModelSerializer):
+class PageFollowersSerializer(serializers.ModelSerializer):
     """
     Provide appropriate data to follow a page.
     """
     class Meta:
         model = Page
-        fields = ['name', 'uuid', 'followers', 'is_private']
-        read_only_fields = ['name', 'uuid', 'is_private', 'followers']
+        fields = ('name', 'uuid', 'followers', 'is_private')
+        read_only_fields = ('name', 'uuid', 'is_private', 'followers')
 
 
-class CreateListUpdateDestroyPostSerializer(serializers.ModelSerializer):
+class PostSerializer(serializers.ModelSerializer):
     """
     (De)Serialize Post model with all fields corresponding to the methods.
     """
     class Meta:
         model = Post
-        fields = '__all__'
-
-
-class ListRetrieveUpdateLikedPostSerializer(serializers.ModelSerializer):
-    """
-    (De)Serialize Post model with 'liked_by' field.
-    """
-    class Meta:
-        model = Post
-        fields = '__all__'
-        read_only_fields = ['title', 'content', 'reply_to', 'page']
+        fields = ('title', 'content', 'reply_to', 'page', 'liked_by')
+        read_only_fields = ('liked_by',)
 
 
 class ManagerPageSerializer(serializers.ModelSerializer):
@@ -79,9 +70,10 @@ class ManagerPageSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Page
-        fields = '__all__'
-        read_only_fields = ['name', 'uuid', 'description', 'is_private',
-                            'image', 'tags', 'followers', 'follow_requests', 'owner']
+        fields = ('name', 'uuid', 'description', 'tags', 'owner',
+                  'followers', 'follow_requests', 'is_private', 'image', 'unblock_date')
+        read_only_fields = ('name', 'uuid', 'description', 'is_private',
+                            'image', 'tags', 'followers', 'follow_requests', 'owner')
 
 
 class ManagerPostSerializer(serializers.ModelSerializer):
@@ -90,8 +82,8 @@ class ManagerPostSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Post
-        fields = '__all__'
-        read_only_fields = ['__all__']
+        fields = ('page', 'title', 'content', 'reply_to')
+        read_only_fields = ('page', 'title', 'content', 'reply_to')
 
 
 class AdminUserSerializer(serializers.ModelSerializer):
@@ -100,5 +92,5 @@ class AdminUserSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['username', 'is_staff', 'is_active', 'role', 'is_blocked']
-        read_only_fields = ['email', 'username', 'image_path', 'liked']
+        fields = ('username', 'is_staff', 'is_active', 'role', 'is_blocked')
+        read_only_fields = ('email', 'username', 'image_path', 'liked')
