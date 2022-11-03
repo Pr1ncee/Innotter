@@ -5,7 +5,6 @@ from django.conf import settings
 import jwt
 from rest_framework import status
 
-from .serializers import RegisterSerializer
 from user.models import User
 
 
@@ -15,22 +14,20 @@ SIGNING_METHOD = settings.SIGNING_METHOD
 
 class AuthService:
     @staticmethod
-    def user_signup(serializer: RegisterSerializer) -> None:
+    def signup_user(username: str, password: str, email: str) -> None:
         """
         Validate serialized data, take user's creds from it, create a new user and save it.
-        :param serializer: provide deserialized data from client.
+        :param username: given username.
+        :param password: given password.
+        :param email: given email.
         :return: None.
         """
-        serializer.is_valid(raise_exception=True)
-        username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'], serializer.validated_data['email']
-
         user = User.objects.create_user(username=username, password=password, email=email)
         user.full_clean()
         user.save()
 
     @staticmethod
-    def user_get_token(user_id: int, ttl: int) -> str:
+    def get_user_token(user_id: int, ttl: int) -> str:
         """
         Take user id as a component of payload and time-to-live component to specify created token.
         :param user_id: integer value, represents id of user
@@ -45,7 +42,7 @@ class AuthService:
         return token
 
     @staticmethod
-    def user_token_verify(token: str) -> tuple[dict[str], int, User | None]:
+    def verify_user_token(token: str) -> tuple[dict[str], int, User | None]:
         """
         Verify whether the given token is valid or not.
         :param token: either access or refresh token.

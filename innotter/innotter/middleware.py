@@ -20,6 +20,6 @@ class CustomJWTAuthenticationMiddleware(MiddlewareMixin):
 
         token = request.META.get('HTTP_AUTHORIZATION', None)
         if token:
-            data, status, user_jwt = AuthService.user_token_verify(token)
+            data, status, user_jwt = AuthService.verify_user_token(token)
 
         return user_jwt
