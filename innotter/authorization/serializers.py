@@ -59,21 +59,7 @@ class TokenRefreshSerializer(serializers.Serializer):
     refresh_token = serializers.CharField(max_length=1024)
 
 
-class TokenVerifySerializer(serializers.Serializer):
-    """
-    (De)Serialize given access token.
-    """
-    access_token = serializers.CharField(max_length=1024)
-
-
-class LoginSerializer(CredentialsSerializer):
-    """
-    Use CredentialsSerializer to (de)serialize and validate the given credentials.
-    """
-    pass
-
-
-class LogoutSerilaizer(CredentialsSerializer):
+class ObtainTokensSerializer(CredentialsSerializer):
     """
     Use CredentialsSerializer to (de)serialize and validate the given credentials.
     """

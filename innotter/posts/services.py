@@ -1,50 +1,44 @@
+from collections import OrderedDict
+from enum import Enum
 from typing import Any
 
-from django.db import models
-from rest_framework.status import HTTP_200_OK, HTTP_204_NO_CONTENT
+from django.db.models import Model
 from rest_framework.request import Request
 
-from posts.serializers import CreateListUpdatePageSerializer, ManagerPageSerializer, ManagerPostSerializer
 from posts.models import Page, Post
 from user.models import User
 
 
-def page_create(request: Request, serializer: CreateListUpdatePageSerializer) -> None:
+class Mode(Enum):
+    DENY = 0
+    ACCEPT = 1
+
+
+def create_page(data: OrderedDict, tags: list) -> None:
     """
     Validate given data, create new page and save it.
-    :param request: sent request from client.
-    :param serializer: deserialized data.
+    :param data: dictionary with data to create.
+    :param tags: tags to add to the page.
     :return: None.
     """
-    user = User.objects.get(pk=request.user.id)
-
-    serializer.is_valid(raise_exception=True)
-    serializer.validated_data['owner'] = user
-    tags = serializer.validated_data.pop('tags')
-
-    new_page = Page.objects.create(**serializer.validated_data)
+    new_page = Page.objects.create(**data)
     new_page.tags.set(tags)
     perform_save(new_page)
 
 
-def page_update(serializer: CreateListUpdatePageSerializer, instance: Page) -> None:
+def update_page(tags_list: list, instance: Page) -> None:
     """
     Validate given data, update and save it.
-    :param serializer: deserialized data.
+    Get list of tags and loop through the list, 'cause user is able to send several tags to add.
+    :param tags_list: list of tags to update.
     :param instance: page to be updated.
     :return: None.
     """
-    serializer.is_valid(raise_exception=True)
-
-    # Get list of tags and loop through the list, 'cause user is able to send several tags to add.
-    tags_list = serializer.validated_data.pop('tags', False)
     if tags_list:
         [instance.tags.add(tag) for tag in tags_list]
 
-    serializer.save()
 
-
-def page_delete(instance: models.Model) -> None:
+def delete_object(instance: Model) -> None:
     """
     Delete a recording.
     :param instance: any Model object.
@@ -53,7 +47,7 @@ def page_delete(instance: models.Model) -> None:
     instance.delete()
 
 
-def page_follow(request: Request, instance: Page) -> dict[str]:
+def follow_page(request: Request, instance: Page) -> dict[str]:
     """
     Follow page or send follow request based on page's and user's current state.
     :param request: send request from client.
@@ -68,35 +62,34 @@ def page_follow(request: Request, instance: Page) -> dict[str]:
     else:
         instance.followers.add(request.user)
         msg = 'You are following the page now!'
-
     perform_save(instance)
 
     return {'info': msg}
 
 
-def page_response_follow_request(instance: Page, mode: str) -> Page:
+def response_page_follow_request(instance: Page, mode: Mode) -> Page:
     """
     Provide page's owner to accept or deny follow request.
     :param instance: page request was sent to.
-    :param mode: implements two actions: 'accept' and 'deny'.
+    :param mode: represents two actions: 'accept' and 'deny'.
     :return: None.
     """
     user_to_response = instance.follow_requests.last()
     if user_to_response:
         match mode:
-            case 'accept':
-                # Take user from 'follow_requests' and put it into 'followers'
+            case Mode.ACCEPT:
+                # Take user from 'follow_requests' and put it into 'followers'.
                 instance.follow_requests.remove(user_to_response)
                 instance.followers.add(user_to_response)
-            case 'deny':
-                # Otherwise remove from 'follow_requests'
+            case Mode.DENY:
+                # Otherwise remove from 'follow_requests'.
                 instance.follow_requests.remove(user_to_response)
 
         perform_save(instance)
         return instance
 
 
-def page_destroy_tag(instance: Page) -> Page:
+def destroy_page_tag(instance: Page) -> Page:
     """
     Take last tag in page's tags and remove it.
     :param instance: page tag to be removed.
@@ -109,7 +102,7 @@ def page_destroy_tag(instance: Page) -> Page:
     return instance
 
 
-def post_like(request: Request, instance: Post) -> None:
+def like_post(request: Request, instance: Post) -> None:
     """
     Get user from request and add post to his 'liked'.
     :param request: request send from client.
@@ -119,35 +112,6 @@ def post_like(request: Request, instance: Post) -> None:
     user = User.objects.get(pk=request.user.id)
     user.liked.add(instance)
     perform_save(user)
-
-
-def manager_view(request: Request, given_serializer: ManagerPageSerializer | ManagerPostSerializer,
-                 instance: Post | Page,
-                 *args: Any, **kwargs: Any) -> tuple[ManagerPageSerializer | ManagerPostSerializer, int]:
-    """
-    Generalized function for moderating both pages and posts
-    :param request: sent request from client
-    :param given_serializer: serializer of Page or Post model
-    :param instance: Page or Post object. Represents the page or the post is being manipulated.
-    :param args: additional args.
-    :param kwargs: dictionary, that contains type of update.
-    :return: serialized data and corresponding status code.
-    """
-    partial = kwargs.pop('partial', False)
-    status_code = None
-    serializer = given_serializer(instance, data=request.data, partial=partial)
-    serializer.is_valid()
-
-    match request.method:
-        case 'PUT':
-            page_update(serializer, instance)
-            status_code = HTTP_200_OK
-        case 'DELETE':
-            page_delete(instance)
-            status_code = HTTP_204_NO_CONTENT
-
-    serializer.save()
-    return serializer, status_code
 
 
 def perform_save(obj: Any) -> None:

@@ -2,23 +2,26 @@ from datetime import date
 
 from django.db import models
 
+from user.models import User
+
 
 class PageManager(models.Manager):
     """
     Represents custom Page model Manager.
     """
-    def user_pages(self, user_id):
+    def get_user_pages(self, user_id: int):
         """
         Return given user's pages.
         """
         return super().get_queryset().filter(owner=user_id)
 
-    def valid_pages(self):
+    def get_valid_pages(self):
         """
         Return pages that owner isn't blocked, themselves aren't blocked and aren't private.
         """
         return super().get_queryset().exclude(owner__is_blocked=True)\
-                                     .exclude(unblock_date__gt=date.today()).exclude(is_private=True)
+                                     .exclude(unblock_date__gt=date.today())\
+                                     .exclude(is_private=True)
 
     def get_all_valid_pages(self):
         """
@@ -32,26 +35,27 @@ class PostManager(models.Manager):
     """
     Represents custom Post model Manager.
     """
-    def user_posts(self, user_id):
+    def get_user_posts(self, user_id: int):
         """
         Return only owned posts by a given user.
         """
         return super().get_queryset().filter(page__owner_id=user_id)
 
-    def liked_posts(self, user):
+    def get_liked_posts(self, user: User):
         """
         Return QuerySet with posts liked by a given user.
         """
         return super().get_queryset().filter(liked_by=user)
 
-    def valid_posts(self):
+    def get_valid_posts(self):
         """
         Return posts that owner isn't blocked, pages aren't blocked and aren't private.
         """
         return super().get_queryset().exclude(page__owner__is_blocked=True)\
-                                     .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
+                                     .exclude(page__unblock_date__gt=date.today())\
+                                     .exclude(page__is_private=True)
 
-    def feed_posts(self, user):
+    def get_feed_posts(self, user: User):
         """
         Filter posts based on both user's owned posts and followed pages.
         Each post belongs to a certain page. Follow page means follow post as well.

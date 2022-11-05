@@ -3,73 +3,56 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .serializers import TokenRefreshSerializer, TokenVerifySerializer, \
-                         LoginSerializer, RegisterSerializer, LogoutSerilaizer
-from .services import user_signin, user_signout, user_signup, user_token_verify, user_token_refresh
+from .serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
+from .services import obtain_tokens, signup_user, refresh_user_token
 
 
-class UserTokenRefreshApi(APIView):
+class UserTokenRefreshView(APIView):
     """
     Take refresh token. If the given deserialized token is valid, return valid access token.
     """
+    permission_classes = (AllowAny,)
     serializer_class = TokenRefreshSerializer
 
     def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refresh_token = serializer.validated_data['refresh_token']
+
         user_id = request.user.id
-        serializer = self.serializer_class(data=request.data)
-
-        data, status_code = user_token_refresh(serializer, user_id)
+        data, status_code = refresh_user_token(refresh_token, user_id)
         return Response(data, status=status_code)
 
 
-class UserTokenVerifyApi(APIView):
+class ObtainTokensView(APIView):
     """
-    Take access token. Return whether the deserialized token is valid or not.
+    Generate and send back both access and refresh tokens, return status=202.
     """
-    serializer_class = TokenVerifySerializer
+    serializer_class = ObtainTokensSerializer
+    permission_classes = (AllowAny,)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
 
-        data, status_code = user_token_verify(serializer)
-        return Response(data, status=status_code)
-
-
-class UserSigninApi(APIView):
-    """
-    Implement user signin, return status=202.
-    """
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-
-        data = user_signin(request, serializer)
+        data = obtain_tokens(user.id)
         return Response(data, status=status.HTTP_202_ACCEPTED)
 
 
-class UserSignoutApi(APIView):
-    """
-    Implement user signout, return status=204
-    """
-    serializer_class = LogoutSerilaizer
-
-    def get(self, request):
-        user_signout(request)
-
-        return Response(None, status=status.HTTP_204_NO_CONTENT)
-
-
-class UserSignupApi(APIView):
+class UserSignupView(APIView):
     """
     Implement user signup, return status=202.
     """
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
+    permission_classes = (AllowAny,)
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username, password, email = serializer.validated_data['username'], \
+                                    serializer.validated_data['password'], \
+                                    serializer.validated_data['email']
 
-        user_signup(serializer)
+        signup_user(username, password, email)
         return Response(None, status=status.HTTP_201_CREATED)

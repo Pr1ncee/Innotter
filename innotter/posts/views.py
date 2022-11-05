@@ -1,48 +1,66 @@
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK
+from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_204_NO_CONTENT
 from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
 from .models import Page, Post
 from user.models import User
-from .serializers import PagesSerializer, MyPagesSerializer, PageTagsSerializer, \
-                         PageFollowersSerializer, PageFollowRequestsSerializer, \
-                         PostSerializer, ManagerPageSerializer, ManagerPostSerializer, \
-                         AdminUserSerializer
-from .services import page_create, page_update, page_follow, page_response_follow_request, \
-                      page_destroy_tag, post_like, manager_view
+from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerializer, DeletePageTagsSerializer, \
+                         UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
+                         UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
+from .services import create_page, update_page, follow_page, response_page_follow_request, \
+                      destroy_page_tag, like_post, delete_object, Mode
 
 
 class PagesViewSet(mixins.ListModelMixin,
                    mixins.RetrieveModelMixin,
+                   mixins.CreateModelMixin,
                    mixins.UpdateModelMixin,
+                   mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    Either list all valid pages or provide 'follow' page's method.
+    All methods for manipulating Page objects.
     """
+    serializer_map = {
+                      'list': CreateUpdatePagesSerializer,
+                      'retrieve': UpdatePageFollowersSerializer,
+                      'create': ListUpdateMyPagesSerializer,
+                      'update': UpdatePageFollowersSerializer,
+                      'partial_update': UpdatePageFollowersSerializer,
+                      'block_page': UpdateBlockPageSerializer,
+                      'get_my_pages': ListUpdateMyPagesSerializer,
+                      'retrieve_my_page': ListUpdateMyPagesSerializer,
+                      'update_my_page': ListUpdateMyPagesSerializer,
+                      'tags': DeletePageTagsSerializer,
+                      'follow_requests': UpdatePageFollowRequestsSerializer,
+                      }
+    permission_classes_map = {'list': (AllowAny,)}
+    default_permission_classes = (IsAuthenticated,)
+
     def get_permissions(self):
         """
-        Instantiate and return the list of permissions that this view requires.
+        Instantiate and return the tuple of permissions that this view requires.
         """
-        if self.action == 'list':
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-
-        return [permission() for permission in permission_classes]
+        return [permission() for permission in
+                self.permission_classes_map.get(self.action, self.default_permission_classes)]
 
     def get_queryset(self):
         """
         Return queryset based on request method.
         """
-        if self.action == 'manager_pages_view':
-            return Page.objects.all()
+        match self.action:
+            case 'manager_pages_view':
+                return Page.objects.all()
+            case 'get_my_pages' | 'retrieve_my_page' | 'delete_my_page'\
+                 | 'delete_my_page' | 'update_my_page' | 'tags' | 'follow_requests':
+                user_id = self.request.user.id
+                return Page.pages_objects.get_user_pages(user_id)
 
         pk = self.kwargs.get('pk')
         if not pk:
-            return Page.pages_objects.valid_pages()
+            return Page.pages_objects.get_valid_pages()
 
         return Page.pages_objects.get_all_valid_pages()
 
@@ -50,170 +68,208 @@ class PagesViewSet(mixins.ListModelMixin,
         """
         Return serializer class based on request method.
         """
-        if self.action == 'list':
-            return PagesSerializer
-        elif self.action in ('retrieve', 'update', 'partial_update'):
-            return PageFollowersSerializer
-        elif self.action == 'manager_pages_view':
-            return ManagerPageSerializer
-
-    def perform_update(self, serializer):
-        page = self.get_object()
-        info = page_follow(self.request, page)
-
-        return Response(data=info, status=HTTP_200_OK)
-
-    @action(methods=['get', 'put'], detail=True, url_path='admin', permission_classes=[IsAdminUser | IsModerator])
-    def manager_pages_view(self, request, pk=None):
-        """
-        Allow admins and moderators manage pages.
-        """
-        serializer, status_code = manager_view(request, self.get_serializer,
-                                               self.get_object(), self.args, self.kwargs)
-
-        return Response(serializer.data, status=status_code)
-
-
-class MyPagesViewSet(mixins.ListModelMixin,
-                     mixins.CreateModelMixin,
-                     mixins.RetrieveModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     viewsets.GenericViewSet):
-    """
-    Provide CRUD methods for Page objects. Extra actions for removing tags, accepting and denying follow requests.
-    """
-    def get_queryset(self):
-        user_id = self.request.user.id
-        return Page.pages_objects.user_pages(user_id)
-
-    def get_serializer_class(self):
-        match self.action:
-            case 'tags':
-                return PageTagsSerializer
-            case 'follow_requests':
-                return PageFollowRequestsSerializer
-            case _:
-                return MyPagesSerializer
+        return self.serializer_map.get(self.action, None)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data)
-        page_create(request, serializer)
+        """
+        Create a new page.
+        """
+        user = User.objects.get(pk=request.user.id)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.validated_data['owner'] = user
+        data = serializer.validated_data
+        tags = data.pop('tags')
+
+        create_page(data, tags)
 
         return Response(serializer.data, status=HTTP_201_CREATED)
 
-    def update(self, request, *args, **kwargs):
+    def perform_update(self, serializer):
+        """
+        Follow a page.
+        """
+        page = self.get_object()
+        info = follow_page(self.request, page)
+
+        return Response(data=info, status=HTTP_200_OK)
+
+    @action(methods=('get', 'put'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
+    def block_page(self, request, pk=None):
+        """
+        Allow admins and moderators block pages.
+        """
+        instance = self.get_object()
+        partial = self.kwargs.pop('partial', False)
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid()
+        serializer.save()
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(methods=('get',), detail=False, url_path='my')
+    def get_my_pages(self, request):
+        serializer = self.get_serializer(self.get_queryset(), many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(methods=('get',), detail=True, url_path='my')
+    def retrieve_my_page(self, request, pk=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @retrieve_my_page.mapping.delete
+    def delete_my_page(self, request, pk=None):
+        instance = self.get_object()
+        delete_object(instance)
+
+        return Response(status=HTTP_204_NO_CONTENT)
+
+    @retrieve_my_page.mapping.put
+    def update_my_page(self, request, pk=None, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        tags_list = serializer.validated_data.pop('tags', False)
 
-        page_update(serializer, instance)
+        update_page(tags_list, instance)
+        serializer.save()
 
-        return Response(serializer.data)
+        return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(methods=['get', 'delete'], detail=True, url_path='tags')
+    @action(methods=('get', 'delete'), detail=True, url_path='my/tags')
     def tags(self, request, pk=None):
+        """
+        Delete last tag in tags list of Page object.
+        """
         if request.method == 'DELETE':
             instance = self.get_object()
 
-            serializer = self.get_serializer(page_destroy_tag(instance))
+            serializer = self.get_serializer(destroy_page_tag(instance))
             return Response(serializer.data, status=HTTP_200_OK)
 
         serializer = self.get_serializer(self.get_queryset(), many=True)
         return Response(serializer.data)
 
-    @action(methods=['get', 'put', 'delete'], detail=True, url_path='follow-requests')
+    @action(methods=('get', 'put', 'delete'), detail=True, url_path='my/follow-requests')
     def follow_requests(self, request, pk=None):
         """
         Implement method for retrieving, accepting and denying follow requests.
         """
         page = self.get_object()
-        serializer = self.get_serializer()
+        serializer = self.get_serializer
         status_code = HTTP_200_OK
 
         match request.method:
             case 'GET':
-                serializer = serializer(self.get_queryset(), many=True)
+                serializer = serializer(page)
             case 'PUT':
-                serializer = serializer(page_response_follow_request(page, mode='accept'))
+                serializer = serializer(response_page_follow_request(page, mode=Mode.ACCEPT))
             case 'DELETE':
-                serializer = serializer(page_response_follow_request(page, mode='deny'))
+                serializer = serializer(response_page_follow_request(page, mode=Mode.DENY))
 
         return Response(serializer.data, status=status_code)
 
 
 class PostsViewSet(mixins.ListModelMixin,
                    mixins.RetrieveModelMixin,
+                   mixins.CreateModelMixin,
                    mixins.UpdateModelMixin,
+                   mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    Either list all valid posts or provide 'like' post's method.
+    All methods for manipulating Post objects.
     """
+    permission_classes_map = {'list': (AllowAny,)}
+    default_permission_classes = (IsAuthenticated,)
+    serializer_map = {
+                      'delete_post': RetrievePostSerializer,
+                      'update_my_post': UpdatePostSerializer,
+                      }
+    default_serializer = ListRetrievePostSerializer
+
     def get_permissions(self):
         """
         Instantiate and return the list of permissions that this view requires.
         """
-        if self.action == 'list':
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAuthenticated]
-
-        return [permission() for permission in permission_classes]
-
-    def get_queryset(self):
-        if self.action == 'manager_posts_view':
-            return Post.objects.all()
-
-        return Post.posts_objects.valid_posts()
-
-    def get_serializer_class(self, *args, **kwargs):
-        if self.action == 'manager_posts_view':
-            return ManagerPostSerializer
-
-        return PostSerializer
-
-    def perform_update(self, serializer):
-        post = self.get_object()
-        post_like(self.request, post)
-
-        return Response(status=HTTP_200_OK)
-
-    @action(methods=['get', 'delete'], detail=True, url_path='admin', permission_classes=[IsAdminUser | IsModerator])
-    def manager_posts_view(self, request, pk=None):
-        """
-        Allow admins and moderators manage posts.
-        """
-        serializer, status_code = manager_view(request, self.get_serializer,
-                                               self.get_object(), self.args, self.kwargs)
-
-        return Response(serializer.data, status=status_code)
-
-
-class MyPostsViewSet(mixins.ListModelMixin,
-                     mixins.RetrieveModelMixin,
-                     mixins.CreateModelMixin,
-                     mixins.UpdateModelMixin,
-                     mixins.DestroyModelMixin,
-                     viewsets.GenericViewSet):
-    """
-    Provide CRUD methods for Post objects. Allow user to get feed and liked posts as well.
-    """
-    serializer_class = PostSerializer
+        return [permission() for permission in
+                self.permission_classes_map.get(self.action, self.default_permission_classes)]
 
     def get_queryset(self):
         """
-        Return queryset depends on request action. By default return user's posts.
+        Return queryset based on request method.
         """
         user = self.request.user
         match self.action:
+            case 'manager_posts_view':
+                return Post.objects.all()
+            case 'get_my_posts' | 'update_my_post' | 'delete_my_post' | 'retrieve_my_post':
+                return Post.posts_objects.get_user_posts(user.id)
             case 'liked_posts':
-                return Post.posts_objects.liked_posts(user)
+                return Post.posts_objects.get_liked_posts(user)
             case 'feed':
-                return Post.posts_objects.feed_posts(user)
-            case _:
-                return Post.posts_objects.user_posts(user.id)
+                return Post.posts_objects.get_feed_posts(user)
 
-    @action(methods=['get'], detail=False, url_path='liked')
+        return Post.posts_objects.get_valid_posts()
+
+    def get_serializer_class(self, *args, **kwargs):
+        """
+        Return serializer class based on request method.
+        """
+        return self.serializer_map.get(self.action, self.default_serializer)
+
+    def perform_update(self, serializer):
+        """
+        Like a post.
+        """
+        post = self.get_object()
+        like_post(self.request, post)
+
+        return Response(status=HTTP_200_OK)
+
+    @action(methods=('get', 'delete'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
+    def delete_post(self, request, pk=None):
+        """
+        Allow admins and moderators manage posts.
+        """
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid()
+        delete_object(instance)
+        serializer.save()
+        return Response(serializer.data, status=HTTP_204_NO_CONTENT)
+
+    @action(methods=('get',), detail=False, url_path='my')
+    def get_my_posts(self, request):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(methods=('get',), detail=True, url_path='my')
+    def retrieve_my_post(self, request, pk=None):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @retrieve_my_post.mapping.delete
+    def delete_my_post(self, request, pk=None):
+        instance = self.get_object()
+        delete_object(instance)
+
+        return Response(status=HTTP_204_NO_CONTENT)
+
+    @retrieve_my_post.mapping.put
+    def update_my_post(self, request, pk=None, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=HTTP_200_OK)
+
+    @action(methods=('get',), detail=False, url_path='my/liked')
     def liked_posts(self, request):
         """
         List user's liked posts.
@@ -222,7 +278,7 @@ class MyPostsViewSet(mixins.ListModelMixin,
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
 
-    @action(methods=['get'], detail=False, url_path='feed')
+    @action(methods=('get',), detail=False, url_path='my/feed')
     def feed(self, request):
         """
         Implement feed by filtering followed and owned posts.
@@ -230,14 +286,3 @@ class MyPostsViewSet(mixins.ListModelMixin,
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=HTTP_200_OK)
-
-
-class AdminUserViewSet(mixins.RetrieveModelMixin,
-                       mixins.UpdateModelMixin,
-                       viewsets.GenericViewSet):
-    """
-    Allow administrators ban users.
-    """
-    permission_classes = [IsAdminUser]
-    serializer_class = AdminUserSerializer
-    queryset = User.objects.all()
