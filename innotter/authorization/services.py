@@ -28,24 +28,8 @@ def refresh_user_token(refresh_token: str, user_id: int) -> tuple[dict[str, str]
     return data, status_code
 
 
-<<<<<<< HEAD
 def obtain_tokens(user_id: int) -> dict[str, str]:
     """
-=======
-def verify_user_token(refresh_token: str) -> tuple[dict[str], int]:
-    """
-    Take access token and verify it, return result of the verification.
-    :param refresh_token: refresh token sent from client.
-    :return: message of verification action and status code.
-    """
-    data, status_code, _ = AuthService.verify_user_token(refresh_token)
-
-    return data, status_code
-
-
-def obtain_tokens(user_id: int) -> dict[str, str]:
-    """
->>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
     Validate serialized data.
     If successfully generate both access and refresh tokens and update user's 'refresh_token' field as well.
     :param user_id: id of user that sent request.
