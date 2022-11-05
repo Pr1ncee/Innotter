@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .serializers import TokenRefreshSerializer, TokenVerifySerializer, RegisterSerializer, ObtainTokensSerializer
-from .services import obtain_tokens, signup_user, verify_user_token, refresh_user_token
+from .serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
+from .services import obtain_tokens, signup_user, refresh_user_token
 
 
 class UserTokenRefreshView(APIView):
@@ -21,21 +21,6 @@ class UserTokenRefreshView(APIView):
 
         user_id = request.user.id
         data, status_code = refresh_user_token(refresh_token, user_id)
-        return Response(data, status=status_code)
-
-
-class UserTokenVerifyView(APIView):
-    """
-    Take access token. Return whether the deserialized token is valid or not.
-    """
-    serializer_class = TokenVerifySerializer
-
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        refresh_token = serializer.validated_data['access_token']
-
-        data, status_code = verify_user_token(refresh_token)
         return Response(data, status=status_code)
 
 
@@ -66,7 +51,8 @@ class UserSignupView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'], serializer.validated_data['email']
+                                    serializer.validated_data['password'],\
+                                    serializer.validated_data['email']
 
         signup_user(username, password, email)
         return Response(None, status=status.HTTP_201_CREATED)

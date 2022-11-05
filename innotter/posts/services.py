@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from enum import Enum
 from typing import Any
 
 from django.db.models import Model
@@ -7,6 +8,11 @@ from rest_framework.request import Request
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
 from user.models import User
+
+
+class Mode(Enum):
+    DENY = 0
+    ACCEPT = 1
 
 
 def create_page(data: OrderedDict, tags: list) -> None:
@@ -62,7 +68,7 @@ def follow_page(request: Request, instance: Page) -> dict[str]:
     return {'info': msg}
 
 
-def response_page_follow_request(instance: Page, mode: str) -> Page:
+def response_page_follow_request(instance: Page, mode: Mode) -> Page:
     """
     Provide page's owner to accept or deny follow request.
     :param instance: page request was sent to.
@@ -72,11 +78,11 @@ def response_page_follow_request(instance: Page, mode: str) -> Page:
     user_to_response = instance.follow_requests.last()
     if user_to_response:
         match mode:
-            case 'accept':
+            case Mode.ACCEPT:
                 # Take user from 'follow_requests' and put it into 'followers'.
                 instance.follow_requests.remove(user_to_response)
                 instance.followers.add(user_to_response)
-            case 'deny':
+            case Mode.DENY:
                 # Otherwise remove from 'follow_requests'.
                 instance.follow_requests.remove(user_to_response)
 

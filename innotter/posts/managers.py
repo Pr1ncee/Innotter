@@ -20,7 +20,8 @@ class PageManager(models.Manager):
         Return pages that owner isn't blocked, themselves aren't blocked and aren't private.
         """
         return super().get_queryset().exclude(owner__is_blocked=True)\
-                                     .exclude(unblock_date__gt=date.today()).exclude(is_private=True)
+                                     .exclude(unblock_date__gt=date.today())\
+                                     .exclude(is_private=True)
 
     def get_all_valid_pages(self):
         """
@@ -51,7 +52,8 @@ class PostManager(models.Manager):
         Return posts that owner isn't blocked, pages aren't blocked and aren't private.
         """
         return super().get_queryset().exclude(page__owner__is_blocked=True)\
-                                     .exclude(page__unblock_date__gt=date.today()).exclude(page__is_private=True)
+                                     .exclude(page__unblock_date__gt=date.today())\
+                                     .exclude(page__is_private=True)
 
     def get_feed_posts(self, user: User):
         """
