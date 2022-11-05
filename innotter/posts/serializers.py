@@ -85,7 +85,7 @@ class UpdatePostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ('title', 'content', 'reply_to', 'page', 'liked_by', 'id')
-        read_only_fields = ('page', 'liked_by', 'id')
+        read_only_fields = ('liked_by', 'id')
 
 
 class UpdateBlockPageSerializer(serializers.ModelSerializer):

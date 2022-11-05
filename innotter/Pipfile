@@ -9,6 +9,7 @@ djangorestframework = "*"
 psycopg2 = "*"
 python-dotenv = "*"
 pyjwt = "*"
+celery = "*"
 
 [dev-packages]
 

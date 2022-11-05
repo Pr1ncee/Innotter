@@ -11,7 +11,7 @@ from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerialize
                          UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
                          UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
 from .services import create_page, update_page, follow_page, response_page_follow_request, \
-                      destroy_page_tag, like_post, delete_object
+                      destroy_page_tag, like_post, delete_object, send_email
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -163,7 +163,7 @@ class PagesViewSet(mixins.ListModelMixin,
 
         match request.method:
             case 'GET':
-                serializer = serializer(self.get_queryset(), many=True)
+                serializer = serializer(page)
             case 'PUT':
                 serializer = serializer(response_page_follow_request(page, mode='accept'))
             case 'DELETE':
@@ -186,6 +186,7 @@ class PostsViewSet(mixins.ListModelMixin,
     serializer_map = {
                       'delete_post': RetrievePostSerializer,
                       'update_my_post': UpdatePostSerializer,
+                      'create': UpdatePostSerializer,
                       }
     default_serializer = ListRetrievePostSerializer
 
@@ -218,6 +219,19 @@ class PostsViewSet(mixins.ListModelMixin,
         Return serializer class based on request method.
         """
         return self.serializer_map.get(self.action, self.default_serializer)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Create post and send notification email to the page's followers.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        post = serializer.validated_data['title']
+        serializer.save()
+
+        result_info = send_email(request, post)
+        data = {'data': serializer.data, 'info': result_info}
+        return Response(data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         """
