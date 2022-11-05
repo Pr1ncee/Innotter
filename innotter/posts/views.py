@@ -11,7 +11,11 @@ from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerialize
                          UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
                          UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
 from .services import create_page, update_page, follow_page, response_page_follow_request, \
+<<<<<<< HEAD
                       destroy_page_tag, like_post, delete_object, Mode
+=======
+                      destroy_page_tag, like_post, delete_object
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -165,9 +169,15 @@ class PagesViewSet(mixins.ListModelMixin,
             case 'GET':
                 serializer = serializer(page)
             case 'PUT':
+<<<<<<< HEAD
                 serializer = serializer(response_page_follow_request(page, mode=Mode.ACCEPT))
             case 'DELETE':
                 serializer = serializer(response_page_follow_request(page, mode=Mode.DENY))
+=======
+                serializer = serializer(response_page_follow_request(page, mode='accept'))
+            case 'DELETE':
+                serializer = serializer(response_page_follow_request(page, mode='deny'))
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
 
         return Response(serializer.data, status=status_code)
 

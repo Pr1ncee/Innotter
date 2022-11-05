@@ -1,5 +1,8 @@
 from collections import OrderedDict
+<<<<<<< HEAD
 from enum import Enum
+=======
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
 from typing import Any
 
 from django.db.models import Model
@@ -9,11 +12,14 @@ from posts.models import Page, Post
 from user.models import User
 
 
+<<<<<<< HEAD
 class Mode(Enum):
     DENY = 0
     ACCEPT = 1
 
 
+=======
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
 def create_page(data: OrderedDict, tags: list) -> None:
     """
     Validate given data, create new page and save it.
@@ -67,7 +73,11 @@ def follow_page(request: Request, instance: Page) -> dict[str]:
     return {'info': msg}
 
 
+<<<<<<< HEAD
 def response_page_follow_request(instance: Page, mode: Mode) -> Page:
+=======
+def response_page_follow_request(instance: Page, mode: str) -> Page:
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
     """
     Provide page's owner to accept or deny follow request.
     :param instance: page request was sent to.
@@ -77,11 +87,19 @@ def response_page_follow_request(instance: Page, mode: Mode) -> Page:
     user_to_response = instance.follow_requests.last()
     if user_to_response:
         match mode:
+<<<<<<< HEAD
             case Mode.ACCEPT:
                 # Take user from 'follow_requests' and put it into 'followers'.
                 instance.follow_requests.remove(user_to_response)
                 instance.followers.add(user_to_response)
             case Mode.DENY:
+=======
+            case 'accept':
+                # Take user from 'follow_requests' and put it into 'followers'.
+                instance.follow_requests.remove(user_to_response)
+                instance.followers.add(user_to_response)
+            case 'deny':
+>>>>>>> ded63ef5c5337092a4cb3d01aba73b6a9d0f21fd
                 # Otherwise remove from 'follow_requests'.
                 instance.follow_requests.remove(user_to_response)
 
