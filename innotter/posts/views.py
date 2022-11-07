@@ -6,12 +6,13 @@ from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
 from .models import Page, Post
+from .mods import Mode
 from user.models import User
 from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerializer, DeletePageTagsSerializer, \
                          UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
                          UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
 from .services import create_page, update_page, follow_page, response_page_follow_request, \
-                      destroy_page_tag, like_post, delete_object, send_email, Mode
+                      destroy_page_tag, like_post, delete_object, send_email
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -220,16 +221,14 @@ class PostsViewSet(mixins.ListModelMixin,
         """
         return self.serializer_map.get(self.action, self.default_serializer)
 
-    def create(self, request, *args, **kwargs):
+    def perform_create(self, serializer):
         """
         Create post and send notification email to the page's followers.
         """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         post = serializer.validated_data['title']
-        serializer.save()
+        result_info = send_email(self.request, post)
 
-        result_info = send_email(request, post)
+        serializer.save()
         data = {'data': serializer.data, 'info': result_info}
         return Response(data, status=HTTP_201_CREATED)
 

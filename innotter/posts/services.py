@@ -1,18 +1,13 @@
 from collections import OrderedDict
-from enum import Enum
 from typing import Any
 
 from django.db.models import Model
 from rest_framework.request import Request
 
+from .mods import Mode
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
 from user.models import User
-
-
-class Mode(Enum):
-    DENY = 0
-    ACCEPT = 1
 
 
 def create_page(data: OrderedDict, tags: list) -> None:
@@ -125,7 +120,7 @@ def send_email(request: Request, post: str) -> str:
     user = request.user
     page_id = request.data['page']
     page = Page.objects.get(pk=page_id)
-    recipient_list = [follower.email for follower in page.followers.all()]
+    recipient_list = [email for email in page.followers.values_list('email', flat=True)]
     subject = f"Have a look at a new post from {user}!"
     message = f"{user} just have created '{post}' post at {page} page! Let's check in!"
 

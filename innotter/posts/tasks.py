@@ -13,7 +13,7 @@ from innotter.celery import app
 def send_new_post_notification_email(subject: str, message: str, recipient_list: list) -> str:
     """
     Implement sending email to the page's followers. Return info of sending email.
-    :param subject: subject of the sending.
+    :param subject: subject of the email.
     :param message: body of the email.
     :param recipient_list: list of recipients.
     :return: corresponding result information.

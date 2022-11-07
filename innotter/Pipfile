@@ -10,6 +10,7 @@ psycopg2 = "*"
 python-dotenv = "*"
 pyjwt = "*"
 celery = "*"
+django-ses = "*"
 
 [dev-packages]
 
