@@ -28,17 +28,6 @@ def refresh_user_token(refresh_token: str, user_id: int) -> tuple[dict[str, str]
     return data, status_code
 
 
-def verify_user_token(refresh_token: str) -> tuple[dict[str], int]:
-    """
-    Take access token and verify it, return result of the verification.
-    :param refresh_token: refresh token sent from client.
-    :return: message of verification action and status code.
-    """
-    data, status_code, _ = AuthService.verify_user_token(refresh_token)
-
-    return data, status_code
-
-
 def obtain_tokens(user_id: int) -> dict[str, str]:
     """
     Validate serialized data.
