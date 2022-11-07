@@ -9,7 +9,7 @@ from .services import obtain_tokens, signup_user, refresh_user_token
 
 class UserTokenRefreshView(APIView):
     """
-    Take refresh token. If the given deserialized token is valid, return valid access token.
+    Take refresh token. If given deserialized token is valid, return valid access token.
     """
     permission_classes = (AllowAny,)
     serializer_class = TokenRefreshSerializer

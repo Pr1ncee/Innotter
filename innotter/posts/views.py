@@ -22,7 +22,7 @@ class PagesViewSet(mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    All methods for manipulating Page objects.
+    All methods for managing Page objects.
     """
     serializer_map = {
                       'list': CreateUpdatePagesSerializer,
@@ -74,9 +74,9 @@ class PagesViewSet(mixins.ListModelMixin,
     def create(self, request, *args, **kwargs):
         """
         Create a new page.
+        Use specific method to update page's tags as 'tags' field has MTM relationship.
         """
         user = User.objects.get(pk=request.user.id)
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['owner'] = user
@@ -84,7 +84,6 @@ class PagesViewSet(mixins.ListModelMixin,
         tags = data.pop('tags')
 
         create_page(data, tags)
-
         return Response(serializer.data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
@@ -180,7 +179,7 @@ class PostsViewSet(mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    All methods for manipulating Post objects.
+    All methods for managing Post objects.
     """
     permission_classes_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
@@ -244,12 +243,14 @@ class PostsViewSet(mixins.ListModelMixin,
     @action(methods=('get', 'delete'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
     def delete_post(self, request, pk=None):
         """
-        Allow admins and moderators manage posts.
+        Allow admins and moderators delete posts.
         """
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid()
+
         delete_object(instance)
+
         serializer.save()
         return Response(serializer.data, status=HTTP_204_NO_CONTENT)
 
