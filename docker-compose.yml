@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    env_file:
+      - ./innotter/.env
+    expose:
+      - "5432"
+    volumes:
+      - ./data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "db_prod"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  innotter:
+    build: innotter
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    env_file:
+      - ./innotter/.env
+    volumes:
+      - ./innotter:/app
