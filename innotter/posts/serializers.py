@@ -34,7 +34,7 @@ class ListUpdateMyPagesSerializer(serializers.ModelSerializer):
 
 class UpdatePageFollowRequestsSerializer(serializers.ModelSerializer):
     """
-    Provide appropriate data for follow methods.
+    Provide appropriate fields for managing follow requests.
     """
     class Meta:
         model = Page
@@ -60,7 +60,7 @@ class DeletePageTagsSerializer(serializers.ModelSerializer):
 
 class UpdatePageFollowersSerializer(serializers.ModelSerializer):
     """
-    Provide appropriate data to follow a page.
+    Provide appropriate fields to follow a page.
     """
     class Meta:
         model = Page
@@ -85,7 +85,7 @@ class UpdatePostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
         fields = ('title', 'content', 'reply_to', 'page', 'liked_by', 'id')
-        read_only_fields = ('page', 'liked_by', 'id')
+        read_only_fields = ('liked_by', 'id')
 
 
 class UpdateBlockPageSerializer(serializers.ModelSerializer):

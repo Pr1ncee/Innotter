@@ -1,18 +1,13 @@
 from collections import OrderedDict
-from enum import Enum
 from typing import Any
 
 from django.db.models import Model
 from rest_framework.request import Request
 
+from .mods import Mode
 from posts.models import Page, Post
+from .tasks import send_new_post_notification_email
 from user.models import User
-
-
-
-class Mode(Enum):
-    DENY = 0
-    ACCEPT = 1
 
 
 def create_page(data: OrderedDict, tags: list) -> None:
@@ -106,13 +101,31 @@ def destroy_page_tag(instance: Page) -> Page:
 def like_post(request: Request, instance: Post) -> None:
     """
     Get user from request and add post to his 'liked'.
-    :param request: request send from client.
+    :param request: request sent from client.
     :param instance: post to be liked.
     :return: None.
     """
     user = User.objects.get(pk=request.user.id)
     user.liked.add(instance)
     perform_save(user)
+
+
+def send_email(request: Request, post: str) -> str:
+    """
+    Get necessary data from request, send notification email and return result information.
+    :param request: request sent from client.
+    :param post: created post name.
+    :return: result information of sending email.
+    """
+    user = request.user
+    page_id = request.data['page']
+    page = Page.objects.get(pk=page_id)
+    recipient_list = [email for email in page.followers.values_list('email', flat=True)]
+    subject = f"Have a look at a new post from {user}!"
+    message = f"{user} just have created '{post}' post at {page} page! Let's check in!"
+
+    result = send_new_post_notification_email(subject, message, recipient_list)
+    return result
 
 
 def perform_save(obj: Any) -> None:

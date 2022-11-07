@@ -6,12 +6,13 @@ from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
 from .models import Page, Post
+from .mods import Mode
 from user.models import User
 from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerializer, DeletePageTagsSerializer, \
                          UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
                          UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
-from .services import create_page, update_page, follow_page, response_page_follow_request,\
-                      destroy_page_tag, like_post, delete_object, Mode
+from .services import create_page, update_page, follow_page, response_page_follow_request, \
+                      destroy_page_tag, like_post, delete_object, send_email
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -21,7 +22,7 @@ class PagesViewSet(mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    All methods for manipulating Page objects.
+    All methods for managing Page objects.
     """
     serializer_map = {
                       'list': CreateUpdatePagesSerializer,
@@ -73,9 +74,9 @@ class PagesViewSet(mixins.ListModelMixin,
     def create(self, request, *args, **kwargs):
         """
         Create a new page.
+        Use specific method to update page's tags as 'tags' field has MTM relationship.
         """
         user = User.objects.get(pk=request.user.id)
-
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['owner'] = user
@@ -83,7 +84,6 @@ class PagesViewSet(mixins.ListModelMixin,
         tags = data.pop('tags')
 
         create_page(data, tags)
-
         return Response(serializer.data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
@@ -179,13 +179,14 @@ class PostsViewSet(mixins.ListModelMixin,
                    mixins.DestroyModelMixin,
                    viewsets.GenericViewSet):
     """
-    All methods for manipulating Post objects.
+    All methods for managing Post objects.
     """
     permission_classes_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
     serializer_map = {
                       'delete_post': RetrievePostSerializer,
                       'update_my_post': UpdatePostSerializer,
+                      'create': UpdatePostSerializer,
                       }
     default_serializer = ListRetrievePostSerializer
 
@@ -219,6 +220,17 @@ class PostsViewSet(mixins.ListModelMixin,
         """
         return self.serializer_map.get(self.action, self.default_serializer)
 
+    def perform_create(self, serializer):
+        """
+        Create post and send notification email to the page's followers.
+        """
+        post = serializer.validated_data['title']
+        result_info = send_email(self.request, post)
+
+        serializer.save()
+        data = {'data': serializer.data, 'info': result_info}
+        return Response(data, status=HTTP_201_CREATED)
+
     def perform_update(self, serializer):
         """
         Like a post.
@@ -231,12 +243,14 @@ class PostsViewSet(mixins.ListModelMixin,
     @action(methods=('get', 'delete'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
     def delete_post(self, request, pk=None):
         """
-        Allow admins and moderators manage posts.
+        Allow admins and moderators delete posts.
         """
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid()
+
         delete_object(instance)
+
         serializer.save()
         return Response(serializer.data, status=HTTP_204_NO_CONTENT)
 

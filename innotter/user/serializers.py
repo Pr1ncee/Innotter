@@ -5,7 +5,7 @@ from .models import User
 
 class AdminUserSerializer(serializers.ModelSerializer):
     """
-    Provide fields for setting user's permissions.
+    Provide fields for managing users.
     """
     class Meta:
         model = User

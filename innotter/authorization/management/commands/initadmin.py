@@ -6,6 +6,9 @@ from user.models import User
 
 
 class Command(BaseCommand):
+    """
+    Can be called from console through 'manage.py'. Get creds from .env file and create a superuser.
+    """
     def handle(self, *args, **options):
         user_queryset = User.objects
 

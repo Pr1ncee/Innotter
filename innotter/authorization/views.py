@@ -7,10 +7,9 @@ from .serializers import TokenRefreshSerializer, RegisterSerializer, ObtainToken
 from .services import obtain_tokens, signup_user, refresh_user_token
 
 
-
 class UserTokenRefreshView(APIView):
     """
-    Take refresh token. If the given deserialized token is valid, return valid access token.
+    Take refresh token. If given deserialized token is valid, return valid access token.
     """
     permission_classes = (AllowAny,)
     serializer_class = TokenRefreshSerializer
@@ -52,7 +51,7 @@ class UserSignupView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'], \
+                                    serializer.validated_data['password'],\
                                     serializer.validated_data['email']
 
         signup_user(username, password, email)

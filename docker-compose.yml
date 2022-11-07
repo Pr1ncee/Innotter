@@ -25,3 +25,22 @@ services:
       - ./innotter/.env
     volumes:
       - ./innotter:/app
+
+  rabbit:
+    image: rabbitmq:3-management
+    container_name: rabbit
+    env_file:
+      - ./innotter/.env
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  celery:
+    build: innotter
+    command: celery -A innotter worker -l info
+    env_file:
+      - ./innotter/.env
+    volumes:
+      - ./innotter:/app
+    depends_on:
+      - rabbit
