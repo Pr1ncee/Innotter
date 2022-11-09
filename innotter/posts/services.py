@@ -12,11 +12,11 @@ from .tasks import send_new_post_notification_email
 from user.models import User
 
 
-def save_image(file_obj: InMemoryUploadedFile) -> str:
+def save_image(file_obj: InMemoryUploadedFile) -> str | None:
     """
-    If given file_object
-    :param file_obj:
-    :return:
+    Validate given file object, if it's image, save it at AWS S3
+    :param file_obj: given file from client.
+    :return: if succeeded return url to image at the remote storage.
     """
     if file_obj:
         file_obj_type = file_obj.content_type.split('/')[0]
@@ -32,7 +32,7 @@ def create_page(data: OrderedDict, tags: list, file_obj: InMemoryUploadedFile) -
     Validate given data, create new page and save it.
     :param data: dictionary with data to create.
     :param tags: tags to add to the page.
-    :param file_obj: file object of image type to be saved at AWS S3.
+    :param file_obj: file object of any type(should be an image) to be saved at AWS S3.
     :return: None.
     """
     file_url = save_image(file_obj)
@@ -49,7 +49,7 @@ def update_page(tags_list: list, file_obj: InMemoryUploadedFile, instance: Page)
     Validate given data, update and save it.
     Get list of tags and loop through the list, 'cause user is able to send several tags to add.
     :param tags_list: list of tags to update.
-    :param file_obj: file object of image type to be saved at AWS S3.
+    :param file_obj: file object of any type(should be an image) to be saved at AWS S3.
     :param instance: page to be updated.
     :return: None.
     """
