@@ -1,4 +1,5 @@
 from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAdminUser, AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_204_NO_CONTENT
@@ -37,15 +38,18 @@ class PagesViewSet(mixins.ListModelMixin,
                       'tags': DeletePageTagsSerializer,
                       'follow_requests': UpdatePageFollowRequestsSerializer,
                       }
-    permission_classes_map = {'list': (AllowAny,)}
+    permission_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
+    filter_backends = (OrderingFilter, SearchFilter)
+    ordering_fields = ('name', 'uuid')
+    search_fields = ('name', 'uuid', 'tags__name')
 
     def get_permissions(self):
         """
         Instantiate and return the tuple of permissions that this view requires.
         """
         return [permission() for permission in
-                self.permission_classes_map.get(self.action, self.default_permission_classes)]
+                self.permission_map.get(self.action, self.default_permission_classes)]
 
     def get_queryset(self):
         """
@@ -75,15 +79,18 @@ class PagesViewSet(mixins.ListModelMixin,
         """
         Create a new page.
         Use specific method to update page's tags as 'tags' field has MTM relationship.
+        In addition, if image sent save it at AWS S3 and update page's 'image' field with image's url at S3.
         """
         user = User.objects.get(pk=request.user.id)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['owner'] = user
+
         data = serializer.validated_data
+        file_obj = serializer.validated_data.pop('image', None)
         tags = data.pop('tags')
 
-        create_page(data, tags)
+        create_page(data, tags, file_obj)
         return Response(serializer.data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
@@ -131,9 +138,11 @@ class PagesViewSet(mixins.ListModelMixin,
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        tags_list = serializer.validated_data.pop('tags', False)
 
-        update_page(tags_list, instance)
+        file_obj = serializer.validated_data.pop('image', None)
+        tags_list = serializer.validated_data.pop('tags', None)
+
+        update_page(tags_list, file_obj, instance)
         serializer.save()
 
         return Response(serializer.data, status=HTTP_200_OK)
@@ -181,7 +190,7 @@ class PostsViewSet(mixins.ListModelMixin,
     """
     All methods for managing Post objects.
     """
-    permission_classes_map = {'list': (AllowAny,)}
+    permission_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
     serializer_map = {
                       'delete_post': RetrievePostSerializer,
@@ -195,7 +204,7 @@ class PostsViewSet(mixins.ListModelMixin,
         Instantiate and return the list of permissions that this view requires.
         """
         return [permission() for permission in
-                self.permission_classes_map.get(self.action, self.default_permission_classes)]
+                self.permission_map.get(self.action, self.default_permission_classes)]
 
     def get_queryset(self):
         """
@@ -224,7 +233,7 @@ class PostsViewSet(mixins.ListModelMixin,
         """
         Create post and send notification email to the page's followers.
         """
-        post = serializer.validated_data['title']
+        post = serializer.validated_data.get('title', None)
         result_info = send_email(self.request, post)
 
         serializer.save()

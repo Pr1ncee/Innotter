@@ -11,6 +11,9 @@ python-dotenv = "*"
 pyjwt = "*"
 celery = "*"
 django-ses = "*"
+boto3 = "*"
+django-storages = "*"
+django-filter = "*"
 
 [dev-packages]
 

@@ -1,35 +1,61 @@
 from collections import OrderedDict
 from typing import Any
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import Model
 from rest_framework.request import Request
 
+from .custom_storage import MediaStorage
 from .mods import Mode
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
 from user.models import User
 
 
-def create_page(data: OrderedDict, tags: list) -> None:
+def save_image(file_obj: InMemoryUploadedFile) -> str:
+    """
+    If given file_object
+    :param file_obj:
+    :return:
+    """
+    if file_obj:
+        file_obj_type = file_obj.content_type.split('/')[0]
+        if file_obj_type == 'image':
+            remote_storage = MediaStorage()
+            remote_storage.save(file_obj.name, file_obj)
+            file_url = remote_storage.url(file_obj.name)
+            return file_url
+
+
+def create_page(data: OrderedDict, tags: list, file_obj: InMemoryUploadedFile) -> None:
     """
     Validate given data, create new page and save it.
     :param data: dictionary with data to create.
     :param tags: tags to add to the page.
+    :param file_obj: file object of image type to be saved at AWS S3.
     :return: None.
     """
+    file_url = save_image(file_obj)
+    data['image'] = file_url
+
     new_page = Page.objects.create(**data)
     new_page.tags.set(tags)
+
     perform_save(new_page)
 
 
-def update_page(tags_list: list, instance: Page) -> None:
+def update_page(tags_list: list, file_obj: InMemoryUploadedFile, instance: Page) -> None:
     """
     Validate given data, update and save it.
     Get list of tags and loop through the list, 'cause user is able to send several tags to add.
     :param tags_list: list of tags to update.
+    :param file_obj: file object of image type to be saved at AWS S3.
     :param instance: page to be updated.
     :return: None.
     """
+    file_url = save_image(file_obj)
+    if file_url:
+        instance.image = file_url
     if tags_list:
         [instance.tags.add(tag) for tag in tags_list]
 
