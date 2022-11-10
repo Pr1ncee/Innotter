@@ -7,13 +7,12 @@ from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
 from .models import Page, Post
-from .mods import Mode
-from user.models import User
+from .enum_objects import Mode, Directory
 from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerializer, DeletePageTagsSerializer, \
                          UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
                          UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
 from .services import create_page, update_page, follow_page, response_page_follow_request, \
-                      destroy_page_tag, like_post, delete_object, send_email
+                      destroy_page_tag, like_post, delete_object, send_email, save_image
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -53,7 +52,7 @@ class PagesViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         """
-        Return queryset based on request method.
+        Return a queryset based on the request method.
         """
         match self.action:
             case 'manager_pages_view':
@@ -71,7 +70,7 @@ class PagesViewSet(mixins.ListModelMixin,
 
     def get_serializer_class(self):
         """
-        Return serializer class based on request method.
+        Return a serializer class based on the request method.
         """
         return self.serializer_map.get(self.action, None)
 
@@ -81,16 +80,18 @@ class PagesViewSet(mixins.ListModelMixin,
         Use specific method to update page's tags as 'tags' field has MTM relationship.
         In addition, if image sent save it at AWS S3 and update page's 'image' field with image's url at S3.
         """
-        user = User.objects.get(pk=request.user.id)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.validated_data['owner'] = user
 
         data = serializer.validated_data
-        file_obj = serializer.validated_data.pop('image', None)
         tags = data.pop('tags')
+        image = request.FILES.get('image')
+        file_url = None
+        if image:
+            file_obj = serializer.validated_data.pop('image', None)
+            file_url = save_image(file_obj, Directory.PAGES)
 
-        create_page(data, tags, file_obj)
+        create_page(data, tags, file_url)
         return Response(serializer.data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
@@ -104,6 +105,7 @@ class PagesViewSet(mixins.ListModelMixin,
 
     @action(methods=('get', 'put'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
     def block_page(self, request, pk=None):
+        print(dir(request))
         """
         Allow admins and moderators block pages.
         """
@@ -208,7 +210,7 @@ class PostsViewSet(mixins.ListModelMixin,
 
     def get_queryset(self):
         """
-        Return queryset based on request method.
+        Return a queryset based on the request method.
         """
         user = self.request.user
         match self.action:
@@ -225,13 +227,13 @@ class PostsViewSet(mixins.ListModelMixin,
 
     def get_serializer_class(self, *args, **kwargs):
         """
-        Return serializer class based on request method.
+        Return a serializer class based on the request method.
         """
         return self.serializer_map.get(self.action, self.default_serializer)
 
     def perform_create(self, serializer):
         """
-        Create post and send notification email to the page's followers.
+        Create a post and send notification email to the page's followers.
         """
         post = serializer.validated_data.get('title', None)
         result_info = send_email(self.request, post)

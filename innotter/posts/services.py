@@ -1,43 +1,48 @@
 from collections import OrderedDict
 from typing import Any
 
+from botocore.exceptions import ClientError
+from django.conf import settings
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import Model
 from rest_framework.request import Request
 
-from .custom_storage import MediaStorage
-from .mods import Mode
+from .clients import S3Client
+from .enum_objects import Mode, Directory
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
 from user.models import User
 
 
-def save_image(file_obj: InMemoryUploadedFile) -> str | None:
+s3 = S3Client
+bucket_name = settings.AWS_STORAGE_BUCKET_NAME
+
+
+def save_image(file_obj: InMemoryUploadedFile, upload_dir: Directory) -> str | None:
     """
     Validate given file object, if it's image, save it at AWS S3
     :param file_obj: given file from client.
+    :param upload_dir: specified directory which stores file objects.
     :return: if succeeded return url to image at the remote storage.
     """
-    if file_obj:
-        file_obj_type = file_obj.content_type.split('/')[0]
-        if file_obj_type == 'image':
-            remote_storage = MediaStorage()
-            remote_storage.save(file_obj.name, file_obj)
-            file_url = remote_storage.url(file_obj.name)
-            return file_url
+    try:
+        upload_path = s3.upload_path(file_obj.name, [str(upload_dir.value)])
+        s3.upload_fileobj(file_obj, bucket_name, upload_path)
+        file_url = s3.get_file_url(bucket_name, settings.AWS_S3_REGION_NAME, upload_path)
+        return file_url
+    except ClientError:
+        pass
 
 
-def create_page(data: OrderedDict, tags: list, file_obj: InMemoryUploadedFile) -> None:
+def create_page(data: OrderedDict, tags: list, file_url: str = None) -> None:
     """
     Validate given data, create new page and save it.
     :param data: dictionary with data to create.
     :param tags: tags to add to the page.
-    :param file_obj: file object of any type(should be an image) to be saved at AWS S3.
+    :param file_url: path to saved image.
     :return: None.
     """
-    file_url = save_image(file_obj)
     data['image'] = file_url
-
     new_page = Page.objects.create(**data)
     new_page.tags.set(tags)
 

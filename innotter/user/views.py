@@ -1,10 +1,14 @@
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework import mixins
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
+from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
+from authorization.permissions import IsProfileOwner
 from .models import User
-from .serializers import AdminUserSerializer, ListUsersSerializer
+from posts.enum_objects import Directory
+from posts.services import save_image
+from .serializers import AdminUserSerializer, ListUsersSerializer, UpdateUserSerializer
 
 
 class AdminUserViewSet(mixins.ListModelMixin,
@@ -14,14 +18,18 @@ class AdminUserViewSet(mixins.ListModelMixin,
     """
     Allow administrators manage users.
     """
-    permission_map = {'retrieve': (IsAdminUser,),
+    permission_map = {'list': (IsAuthenticated,),
+                      'retrieve': (IsAdminUser,),
+                      'retrieve_my_profile': (IsProfileOwner,),
                       'update': (IsAdminUser,),
-                      'list': (IsAuthenticated,),
+                      'update_my_profile': (IsProfileOwner,),
                       'partial_update': (IsAdminUser,),
                       None: (IsAdminUser,)}
     serializer_map = {'list': ListUsersSerializer,
                       'retrieve': AdminUserSerializer,
+                      'retrieve_my_profile': UpdateUserSerializer,
                       'update': AdminUserSerializer,
+                      'update_my_profile': UpdateUserSerializer,
                       'partial_update': AdminUserSerializer,
                       }
     queryset = User.objects.all()
@@ -37,6 +45,33 @@ class AdminUserViewSet(mixins.ListModelMixin,
 
     def get_serializer_class(self):
         """
-        Return serializer based on request method.
+        Return a serializer based on the request method.
         """
         return self.serializer_map.get(self.action, None)
+
+    @action(methods=('get',), detail=True, url_path='profile')
+    def retrieve_my_profile(self, request, pk=None):
+        print(self.action)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
+    @retrieve_my_profile.mapping.put
+    def update_my_profile(self, request, pk=None, *args, **kwargs):
+        """
+        Updates user's profile by default.
+        If image passed save it at AWS S3 and return url of the remote storage.
+        """
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        image = request.FILES.get('image_path')
+        if image:
+            file_obj = serializer.validated_data.pop('image_path', None)
+            file_url = save_image(file_obj, Directory.USERS)
+            serializer.validated_data['image_path'] = file_url
+
+        self.perform_update(serializer)
+        return Response(serializer.data)
