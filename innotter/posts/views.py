@@ -144,7 +144,7 @@ class PagesViewSet(mixins.ListModelMixin,
         file_obj = serializer.validated_data.pop('image', None)
         tags_list = serializer.validated_data.pop('tags', None)
 
-        update_page(tags_list, file_obj, instance)
+        update_page(tags_list, file_obj, instance, Directory.PAGES)
         serializer.save()
 
         return Response(serializer.data, status=HTTP_200_OK)
@@ -236,11 +236,9 @@ class PostsViewSet(mixins.ListModelMixin,
         Create a post and send notification email to the page's followers.
         """
         post = serializer.validated_data.get('title', None)
-        result_info = send_email(self.request, post)
+        send_email(self.request, post)
 
         serializer.save()
-        data = {'data': serializer.data, 'info': result_info}
-        return Response(data, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         """
