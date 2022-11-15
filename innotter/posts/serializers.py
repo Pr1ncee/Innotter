@@ -61,7 +61,8 @@ class UpdatePageFollowRequestsSerializer(serializers.ModelSerializer):
                             'followers',
                             'is_private',
                             'unblock_date',
-                            'image')
+                            'image',
+                            'follow_requests')
 
 
 class DeletePageTagsSerializer(serializers.ModelSerializer):

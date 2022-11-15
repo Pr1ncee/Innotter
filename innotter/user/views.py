@@ -51,7 +51,6 @@ class AdminUserViewSet(mixins.ListModelMixin,
 
     @action(methods=('get',), detail=True, url_path='profile')
     def retrieve_my_profile(self, request, pk=None):
-        print(self.action)
         instance = self.get_object()
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
@@ -59,7 +58,7 @@ class AdminUserViewSet(mixins.ListModelMixin,
     @retrieve_my_profile.mapping.put
     def update_my_profile(self, request, pk=None, *args, **kwargs):
         """
-        Updates user's profile by default.
+        Update user's profile by default.
         If image passed save it at AWS S3 and return url of the remote storage.
         """
         partial = kwargs.pop('partial', False)

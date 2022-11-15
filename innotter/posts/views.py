@@ -83,6 +83,7 @@ class PagesViewSet(mixins.ListModelMixin,
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        response = serializer.data
         data = serializer.validated_data
         tags = data.pop('tags')
         image = request.FILES.get('image')
@@ -91,21 +92,20 @@ class PagesViewSet(mixins.ListModelMixin,
             file_obj = serializer.validated_data.pop('image', None)
             file_url = save_image(file_obj, Directory.PAGES)
 
-        create_page(data, tags, file_url)
-        return Response(serializer.data, status=HTTP_201_CREATED)
+        page_id = create_page(data, tags, file_url)
+        response['id'] = page_id
+        response['image'] = file_url
+        return Response(response, status=HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         """
         Follow a page.
         """
         page = self.get_object()
-        info = follow_page(self.request, page)
-
-        return Response(data=info, status=HTTP_200_OK)
+        follow_page(self.request, page)
 
     @action(methods=('get', 'put'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
     def block_page(self, request, pk=None):
-        print(dir(request))
         """
         Allow admins and moderators block pages.
         """
@@ -154,13 +154,13 @@ class PagesViewSet(mixins.ListModelMixin,
         """
         Delete last tag in tags list of Page object.
         """
+        instance = self.get_object()
         if request.method == 'DELETE':
-            instance = self.get_object()
 
             serializer = self.get_serializer(destroy_page_tag(instance))
             return Response(serializer.data, status=HTTP_200_OK)
 
-        serializer = self.get_serializer(self.get_queryset(), many=True)
+        serializer = self.get_serializer(instance)
         return Response(serializer.data)
 
     @action(methods=('get', 'put', 'delete'), detail=True, url_path='my/follow-requests')
