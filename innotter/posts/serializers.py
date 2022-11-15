@@ -16,6 +16,20 @@ class ListUpdateMyPagesSerializer(serializers.ModelSerializer):
     """
     (De)Serialize Page model to allow an owner to look through and edit his pages.
     """
+    image = serializers.FileField(required=False)
+    owner = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    def to_representation(self, instance):
+        """Insert actual image's url if it exists."""
+        rep = super().to_representation(instance)
+        try:
+            img = instance.image
+        except AttributeError:
+            img = instance.get('image', None)
+
+        rep['image'] = img
+        return rep
+
     class Meta:
         model = Page
         fields = ('name',
@@ -28,7 +42,8 @@ class ListUpdateMyPagesSerializer(serializers.ModelSerializer):
                   'image',
                   'unblock_date',
                   'posts',
-                  'id')
+                  'id',
+                  'owner',)
         read_only_fields = ('followers', 'follow_requests', 'unblock_date', 'posts', 'id')
 
 
