@@ -47,8 +47,8 @@ class S3Client(metaclass=ClientMeta):
         """
         Create an object url to the given image
         :param bucket_name: name of the storage
-        :param region_name: region name.
-        :param upload_path: upload path. See above.
+        :param region_name: region name
+        :param upload_path: upload path. See above
         :return: object url.
         """
         return cls._url.format(bucket_name, region_name, upload_path)
@@ -58,16 +58,17 @@ class S3Client(metaclass=ClientMeta):
         """
         Create a presigned url with expiration time to access the object at the remote storage
         :param bucket_name: name of the storage
-        :param upload_path: upload path. See above.
-        :param expiration: the time in which the url will be invalid.
-        :return: generated presigned url .
+        :param upload_path: upload path. See above
+        :param expiration: the time in which the url will be invalid
+        :return: generated presigned url.
         """
-        presigned_url = None
         try:
-            presigned_url = cls.client.generate_presigned_url('get_object',
-                                                              Params={'Bucket': bucket_name,
-                                                                      'Key': upload_path},
-                                                              ExpiresIn=expiration)
+            presigned_url = cls.client.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': bucket_name,
+                                        'Key': upload_path},
+                                ExpiresIn=expiration
+            )
+            return presigned_url
         except ClientError:
             pass
-        return presigned_url

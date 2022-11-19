@@ -20,10 +20,10 @@ def refresh_user_token(refresh_token: str, user_id: int) -> tuple[dict[str, str]
     _, status_code, _ = AuthService.verify_user_token(refresh_token)
     if status_code == status.HTTP_200_OK:
         access_token = AuthService.get_user_token(user_id, ACCESS_TOKEN_LIFE_TIME)
-        data = {'info': '', 'access_token': access_token}
+        data = {'msg': '', 'access_token': access_token, 'refresh_token': refresh_token}
         status_code = status.HTTP_200_OK
     else:
-        data = {'info': 'Invalid token', 'access_token': ''}
+        data = {'msg': 'Invalid token', 'access_token': '', 'refresh_token': ''}
         status_code = status.HTTP_400_BAD_REQUEST
 
     return data, status_code
@@ -55,9 +55,9 @@ def signup_user(username: str, password: str, email: str) -> tuple[dict[str], in
     """
     try:
         AuthService.signup_user(username, password, email)
-        info = {'info': 'The user was successfully created'}
+        msg = {'msg': 'The user was successfully created'}
         status_code = status.HTTP_201_CREATED
     except IntegrityError:
-        info = {'info': 'The username has been already taken'}
+        msg = {'msg': 'The username has been already taken'}
         status_code = status.HTTP_400_BAD_REQUEST
-    return info, status_code
+    return msg, status_code
