@@ -7,7 +7,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import Model
 from rest_framework.request import Request
 
-from .clients import S3Client
+from .aws.s3_client import S3Client
 from .enum_objects import Mode, Directory
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
@@ -21,54 +21,56 @@ bucket_name = settings.AWS_STORAGE_BUCKET_NAME
 def save_image(file_obj: InMemoryUploadedFile, upload_dir: Directory) -> str | None:
     """
     Validate given file object, if it's image, save it at AWS S3
-    :param file_obj: given file from client.
-    :param upload_dir: specified directory that stores file objects.
+    :param file_obj: given file from client
+    :param upload_dir: specified directory that stores file objects
     :return: if succeeded return url to image at the remote storage.
     """
     try:
         upload_path = s3.upload_path(file_obj.name, [str(upload_dir.value)])
         s3.upload_fileobj(file_obj, bucket_name, upload_path)
-        file_url = s3.get_file_url(bucket_name, settings.AWS_REGION_NAME, upload_path)
-        return file_url
+        presigned_url = s3.create_presigned_url(bucket_name, upload_path)
+        return presigned_url
     except ClientError:
         pass
 
 
-def create_page(data: OrderedDict, tags: list, file_url: str = None) -> None:
+def create_page(data: OrderedDict, tags: list, file_url: str = None) -> int:
     """
-    Validate given data, create new page and save it.
-    :param data: dictionary with data to create.
-    :param tags: tags to add to the page.
+    Validate given data, create new page and save it
+    :param data: dictionary with data to create
+    :param tags: tags to add to the page
     :param file_url: path to saved image.
-    :return: None.
+    :return: id of created page.
     """
     data['image'] = file_url
     new_page = Page.objects.create(**data)
     new_page.tags.set(tags)
 
     perform_save(new_page)
+    return new_page.id
 
 
 def update_page(tags_list: list, file_obj: InMemoryUploadedFile, instance: Page, upload_dir: Directory) -> None:
     """
     Validate given data, update and save it.
-    Get list of tags and loop through the list, 'cause user is able to send several tags to add.
-    :param tags_list: list of tags to update.
-    :param file_obj: file object of any type(should be an image) to be saved at AWS S3.
-    :param instance: page to be updated.
+    Get list of tags and loop through the list, 'cause user is able to send several tags to add
+    :param tags_list: list of tags to update
+    :param file_obj: file object of any type(should be an image) to be saved at AWS S3
+    :param instance: page to be updated
     :param upload_dir: specified directory that stores file objects.
     :return: None.
     """
-    file_url = save_image(file_obj, upload_dir)
-    if file_url:
-        instance.image = file_url
+    if file_obj:
+        file_url = save_image(file_obj, upload_dir)
+        if file_url:
+            instance.image = file_url
     if tags_list:
         [instance.tags.add(tag) for tag in tags_list]
 
 
 def delete_object(instance: Model) -> None:
     """
-    Delete a recording.
+    Delete a recording
     :param instance: any Model object.
     :return: None.
     """
@@ -77,11 +79,10 @@ def delete_object(instance: Model) -> None:
 
 def follow_page(request: Request, instance: Page) -> dict[str]:
     """
-    Follow page or send follow request based on page's and user's current state.
-    :param request: send request from client.
+    Follow page or send follow request based on page's and user's current state
+    :param request: send request from client
     :param instance: page to be followed.
-    :return: dictionary with the one value, which represents result of the following action.
-    :return: None.
+    :return: dictionary with the one value, that represents result of the following action.
     """
     # If page is private and user doesn't follow it yet.
     if instance.is_private and (request.user not in instance.followers.all()):
@@ -97,8 +98,8 @@ def follow_page(request: Request, instance: Page) -> dict[str]:
 
 def response_page_follow_request(instance: Page, mode: Mode) -> Page:
     """
-    Provide page's owner to accept or deny follow request.
-    :param instance: page request was sent to.
+    Provide page's owner to accept or deny follow request
+    :param instance: page request was sent to
     :param mode: represents two actions: 'accept' and 'deny'.
     :return: None.
     """
@@ -119,7 +120,7 @@ def response_page_follow_request(instance: Page, mode: Mode) -> Page:
 
 def destroy_page_tag(instance: Page) -> Page:
     """
-    Take last tag in page's tags and remove it.
+    Take last tag in page's tags and remove it
     :param instance: page tag to be removed.
     :return: None.
     """
@@ -132,8 +133,8 @@ def destroy_page_tag(instance: Page) -> Page:
 
 def like_post(request: Request, instance: Post) -> None:
     """
-    Get user from request and add post to his 'liked'.
-    :param request: request sent from client.
+    Get user from request and add post to his 'liked'
+    :param request: request sent from client
     :param instance: post to be liked.
     :return: None.
     """
@@ -145,7 +146,7 @@ def like_post(request: Request, instance: Post) -> None:
 def send_email(request: Request, post: str) -> str:
     """
     Get necessary data from request, send notification email and return result information.
-    :param request: request sent from client.
+    :param request: request sent from client
     :param post: created post name.
     :return: result information of sending email.
     """

@@ -51,8 +51,8 @@ class UserSignupView(APIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'],\
+                                    serializer.validated_data['password'], \
                                     serializer.validated_data['email']
 
-        signup_user(username, password, email)
-        return Response(None, status=status.HTTP_201_CREATED)
+        data, status_code = signup_user(username, password, email)
+        return Response(data, status=status_code)
