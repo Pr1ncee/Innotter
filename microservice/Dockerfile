@@ -16,3 +16,6 @@ COPY . /app/microservice
 
 FROM base AS main
 ENTRYPOINT ["/bin/bash", "/app/microservice/scripts/start-server.sh"]
+
+FROM base AS workers
+ENTRYPOINT ["/bin/bash", "/app/microservice/scripts/start-workers.sh"]
