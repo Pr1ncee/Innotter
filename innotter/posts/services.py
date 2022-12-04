@@ -15,7 +15,7 @@ from .enum_objects import (
     PostMethods,
     PageMethods
 )
-from .producer import PikaClient
+from innotter.posts.pika.producer import PikaClient
 from posts.models import Page, Post
 from .tasks import send_new_post_notification_email
 from user.models import User
