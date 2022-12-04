@@ -7,12 +7,30 @@ from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
 from .models import Page, Post
-from .enum_objects import Mode, Directory
-from .serializers import CreateUpdatePagesSerializer, ListUpdateMyPagesSerializer, DeletePageTagsSerializer, \
-                         UpdatePageFollowersSerializer, UpdatePageFollowRequestsSerializer, ListRetrievePostSerializer,\
-                         UpdatePostSerializer, UpdateBlockPageSerializer, RetrievePostSerializer
-from .services import create_page, update_page, follow_page, response_page_follow_request, \
-                      destroy_page_tag, like_post, delete_object, send_email, save_image
+from .enum_objects import Mode, Directory, PostMethods
+from .serializers import (
+    CreateUpdatePagesSerializer,
+    ListUpdateMyPagesSerializer,
+    DeletePageTagsSerializer,
+    UpdatePageFollowersSerializer,
+    UpdatePageFollowRequestsSerializer,
+    ListRetrievePostSerializer,
+    UpdatePostSerializer,
+    UpdateBlockPageSerializer,
+    RetrievePostSerializer
+)
+from .services import (
+    create_page,
+    update_page,
+    follow_page,
+    response_page_follow_request,
+    destroy_page_tag,
+    like_post,
+    delete_object,
+    send_email,
+    save_image,
+    publish_post
+)
 
 
 class PagesViewSet(mixins.ListModelMixin,
@@ -25,18 +43,18 @@ class PagesViewSet(mixins.ListModelMixin,
     All methods for managing Page objects.
     """
     serializer_map = {
-                      'list': CreateUpdatePagesSerializer,
-                      'retrieve': UpdatePageFollowersSerializer,
-                      'create': ListUpdateMyPagesSerializer,
-                      'update': UpdatePageFollowersSerializer,
-                      'partial_update': UpdatePageFollowersSerializer,
-                      'block_page': UpdateBlockPageSerializer,
-                      'get_my_pages': ListUpdateMyPagesSerializer,
-                      'retrieve_my_page': ListUpdateMyPagesSerializer,
-                      'update_my_page': ListUpdateMyPagesSerializer,
-                      'tags': DeletePageTagsSerializer,
-                      'follow_requests': UpdatePageFollowRequestsSerializer,
-                      }
+        'list': CreateUpdatePagesSerializer,
+        'retrieve': UpdatePageFollowersSerializer,
+        'create': ListUpdateMyPagesSerializer,
+        'update': UpdatePageFollowersSerializer,
+        'partial_update': UpdatePageFollowersSerializer,
+        'block_page': UpdateBlockPageSerializer,
+        'get_my_pages': ListUpdateMyPagesSerializer,
+        'retrieve_my_page': ListUpdateMyPagesSerializer,
+        'update_my_page': ListUpdateMyPagesSerializer,
+        'tags': DeletePageTagsSerializer,
+        'follow_requests': UpdatePageFollowRequestsSerializer,
+    }
     permission_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
     filter_backends = (OrderingFilter, SearchFilter)
@@ -57,7 +75,7 @@ class PagesViewSet(mixins.ListModelMixin,
         match self.action:
             case 'manager_pages_view':
                 return Page.objects.all()
-            case 'get_my_pages' | 'retrieve_my_page' | 'delete_my_page'\
+            case 'get_my_pages' | 'retrieve_my_page' | 'delete_my_page' \
                  | 'delete_my_page' | 'update_my_page' | 'tags' | 'follow_requests':
                 user_id = self.request.user.id
                 return Page.pages_objects.get_user_pages(user_id)
@@ -130,7 +148,7 @@ class PagesViewSet(mixins.ListModelMixin,
     @retrieve_my_page.mapping.delete
     def delete_my_page(self, request, pk=None):
         instance = self.get_object()
-        delete_object(instance)
+        delete_object(instance, pk=pk)
 
         return Response(status=HTTP_204_NO_CONTENT)
 
@@ -144,9 +162,7 @@ class PagesViewSet(mixins.ListModelMixin,
         file_obj = serializer.validated_data.pop('image', None)
         tags_list = serializer.validated_data.pop('tags', None)
 
-        update_page(tags_list, file_obj, instance, Directory.PAGES)
-        serializer.save()
-
+        update_page(tags_list, file_obj, instance, Directory.PAGES, serializer)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(methods=('get', 'delete'), detail=True, url_path='my/tags')
@@ -156,7 +172,6 @@ class PagesViewSet(mixins.ListModelMixin,
         """
         instance = self.get_object()
         if request.method == 'DELETE':
-
             serializer = self.get_serializer(destroy_page_tag(instance))
             return Response(serializer.data, status=HTTP_200_OK)
 
@@ -195,10 +210,10 @@ class PostsViewSet(mixins.ListModelMixin,
     permission_map = {'list': (AllowAny,)}
     default_permission_classes = (IsAuthenticated,)
     serializer_map = {
-                      'delete_post': RetrievePostSerializer,
-                      'update_my_post': UpdatePostSerializer,
-                      'create': UpdatePostSerializer,
-                      }
+        'delete_post': RetrievePostSerializer,
+        'update_my_post': UpdatePostSerializer,
+        'create': UpdatePostSerializer,
+    }
     default_serializer = ListRetrievePostSerializer
 
     def get_permissions(self):
@@ -235,10 +250,7 @@ class PostsViewSet(mixins.ListModelMixin,
         """
         Create a post and send notification email to the page's followers.
         """
-        post = serializer.validated_data.get('title', None)
-        send_email(self.request, post)
-
-        serializer.save()
+        send_email(self.request, serializer)
 
     def perform_update(self, serializer):
         """
@@ -246,7 +258,6 @@ class PostsViewSet(mixins.ListModelMixin,
         """
         post = self.get_object()
         like_post(self.request, post)
-
         return Response(status=HTTP_200_OK)
 
     @action(methods=('get', 'delete'), detail=True, url_path='admin', permission_classes=(IsAdminUser | IsModerator))
@@ -258,9 +269,7 @@ class PostsViewSet(mixins.ListModelMixin,
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid()
 
-        delete_object(instance)
-
-        serializer.save()
+        delete_object(instance, serializer, pk=pk, is_post=True)
         return Response(serializer.data, status=HTTP_204_NO_CONTENT)
 
     @action(methods=('get',), detail=False, url_path='my')
@@ -278,8 +287,8 @@ class PostsViewSet(mixins.ListModelMixin,
     @retrieve_my_post.mapping.delete
     def delete_my_post(self, request, pk=None):
         instance = self.get_object()
-        delete_object(instance)
 
+        delete_object(instance, pk=pk, is_post=True)
         return Response(status=HTTP_204_NO_CONTENT)
 
     @retrieve_my_post.mapping.put
@@ -288,8 +297,11 @@ class PostsViewSet(mixins.ListModelMixin,
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        post = serializer.validated_data
 
+        serializer.save()
+        liked_by = len(serializer.data['liked_by'])
+        publish_post(post, PostMethods.UPDATE, pk=pk, liked_by=liked_by)
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(methods=('get',), detail=False, url_path='my/liked')

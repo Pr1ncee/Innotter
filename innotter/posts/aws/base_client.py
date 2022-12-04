@@ -1,5 +1,6 @@
-from django.conf import settings
 import boto3
+from boto3.resources.base import ServiceResource
+from django.conf import settings
 
 
 class ClientMeta(type):
@@ -7,7 +8,7 @@ class ClientMeta(type):
     Metaclass for AWS services.
     """
     @property
-    def client(cls):
+    def client(cls) -> ServiceResource:
         """
         Return a low-level service client by name of inheriting service.
         """

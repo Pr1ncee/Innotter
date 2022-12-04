@@ -50,9 +50,10 @@ class UserSignupView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'], \
-                                    serializer.validated_data['email']
+        username, password, email = \
+            serializer.validated_data['username'], \
+            serializer.validated_data['password'], \
+            serializer.validated_data['email']
 
         data, status_code = signup_user(username, password, email)
         return Response(data, status=status_code)
