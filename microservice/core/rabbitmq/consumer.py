@@ -3,7 +3,7 @@ import sys
 sys.path.append('/app/microservice/core/')
 
 import json
-from warnings import warn
+import logging
 
 from botocore.exceptions import ClientError
 import pika
@@ -17,6 +17,7 @@ from domain.enum_objects import PageMethods, PostMethods, UserMethods
 from settings import settings
 
 
+logger = logging.getLogger(__name__)
 db = DynamoDBClient
 
 
@@ -42,7 +43,7 @@ class ClientMeta(type):
                 new_channel = connection.channel()
                 setattr(cls, '_channel', new_channel)
             except AMQPConnectionError:
-                warn("The message broker hasn't started yet")
+                logger.warning("The message broker hasn't started yet")
         return getattr(cls, '_channel')
 
 
@@ -74,7 +75,7 @@ class PikaClient(metaclass=ClientMeta):
             cls.channel.basic_consume(cls._queue, on_message_callback=cls.callback, auto_ack=True)
             cls.channel.start_consuming()
         except (StreamLostError, ChannelWrongStateError, AttributeError):
-            warn('No items in the deque or queue name may be invalid')
+            logging.warning('No items in the deque or the queue name may be invalid')
 
     @classmethod
     def stop_consumer(cls):
@@ -85,7 +86,7 @@ class PikaClient(metaclass=ClientMeta):
             cls.channel.stop_consuming()
             cls.channel.close()
         except TypeError:
-            warn("You must firstly start the workers")
+            logger.error("You must firstly start the workers")
 
     @staticmethod
     def preprocessing_data(data: dict, update=False) -> dict:
@@ -138,4 +139,4 @@ class PikaClient(metaclass=ClientMeta):
                         target_pk=target_pk
                     )
         except ClientError:
-            warn("Operation has failed, the given data wasn't valid")
+            logger.error("Operation has failed, the given data wasn't valid")

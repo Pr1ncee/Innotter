@@ -1,6 +1,9 @@
-from warnings import warn
+import logging
 
 from .base_client import ClientMeta
+
+
+logger = logging.getLogger(__name__)
 
 
 class DynamoDBClient(metaclass=ClientMeta):
@@ -94,6 +97,6 @@ class DynamoDBClient(metaclass=ClientMeta):
             case None:
                 pk_type, pk = 'NULL', True
             case _:
-                warn("The given primary key's type is invalid")
+                logging.error("The given primary key's type is invalid")
                 raise KeyError("Define the right primary return_value key's type")
         return pk_type, pk

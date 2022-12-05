@@ -1,4 +1,4 @@
-from warnings import warn
+import logging
 
 from fastapi import status, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,6 +9,7 @@ from core.settings import settings
 from core.aws.dynamodb_client import DynamoDBClient
 
 
+logger = logging.getLogger(__name__)
 db = DynamoDBClient
 
 
@@ -38,9 +39,9 @@ class AuthService:
                     valid = True
                     return valid
             except jwt.ExpiredSignatureError:
-                warn('The given token is expired')
+                logger.warning('The given token is expired')
             except (jwt.DecodeError, jwt.InvalidTokenError):
-                warn('The given token is invalid')
+                logger.warning('The given token is invalid')
         return valid
 
 
@@ -57,7 +58,7 @@ class JWTBearer(HTTPBearer):
         if credentials:
             return self.verifying_creds(credentials.credentials, request)
         else:
-            warn('Access denied (Invalid authorization code)')
+            logger.warning('Access denied (Invalid authorization code)')
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid authorization code.')
 
     @classmethod
@@ -69,7 +70,7 @@ class JWTBearer(HTTPBearer):
         :return: return the given token if valid, otherwise raise HTTPException.
         """
         if not AuthService.verify_user_token(token):
-            warn('Access denied (The token is invalid)')
+            logger.warning('Access denied (The token is invalid)')
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid or expired token.')
         return token
 
@@ -85,18 +86,18 @@ class IsUserOwner(JWTBearer):
                  otherwise throw HTTPException.
         """
         if not AuthService.verify_user_token(token):
-            warn('Access denied (The token is invalid)')
+            logger.warning('Access denied (The token is invalid)')
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='Invalid token or expired token.')
 
         try:
             user_id = int(request.get('path_params')['user_id'])
         except ValueError:
-            warn('Access denied (The given params are invalid')
+            logger.warning('Access denied (The given params are invalid')
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='The given params are invalid.')
         else:
             user_id_from_token = AuthService.get_user_id_from_token(token)
             if user_id_from_token != user_id:
-                warn('Access denied (The user has no permission to view this page)')
+                logger.warning('Access denied (The user has no permission to view this page)')
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail='You have no permission to view this page')

@@ -5,7 +5,6 @@ from core.auth.auth import IsUserOwner
 from core.services.services import get_objects, total_objects_count
 from core.settings import settings
 
-# TODO replace warnings with logging
 
 app = FastAPI()
 db = DynamoDBClient
