@@ -58,6 +58,7 @@ def publish_page(page: Page, method: PageMethods, pk: int | None = None) -> None
     else:
         data.update({
             'id': page.id,
+            'owner_id': page.owner.id,
             'name': page.name,
             'uuid': page.uuid,
             'followers': page.followers.all().count(),
