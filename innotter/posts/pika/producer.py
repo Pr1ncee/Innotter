@@ -3,7 +3,7 @@ import json
 from django.conf import settings
 import pika
 
-from innotter.posts.enum_objects import PostMethods, PageMethods
+from posts.enum_objects import PostMethods, PageMethods
 from .base_client import ClientMeta
 
 
