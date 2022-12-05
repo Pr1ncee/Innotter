@@ -26,4 +26,3 @@ class UserMethods(Enum):
     """
     CREATE = 'create_users'
     UPDATE = 'update_users'
-

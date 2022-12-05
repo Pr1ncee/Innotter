@@ -20,4 +20,4 @@ AWS_ACCESS_KEY_ID = config["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = config["AWS_SECRET_ACCESS_KEY"]
 PK = 'id'  # Primary key of the db's tables
 ROUTING_KEY = 'stats'
-TABLE_NAME_USERS = 'users'
+TABLE_NAME_USERS, TABLE_NAME_PAGES, TABLE_NAME_POSTS = 'users', 'pages', 'posts'

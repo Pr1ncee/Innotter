@@ -8,7 +8,7 @@ class DynamoDBClient(metaclass=ClientMeta):
     _client = None
 
     @classmethod
-    def scan_db(cls, table_name: str) -> list:
+    def scan(cls, table_name: str) -> list | tuple:
         """
         Scan the database based on table_name
         :param table_name: target table

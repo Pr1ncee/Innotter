@@ -2,8 +2,8 @@ import sys
 
 sys.path.append('/app/microservice/core/')
 
-from warnings import warn
 import json
+from warnings import warn
 
 from botocore.exceptions import ClientError
 import pika
@@ -24,7 +24,6 @@ class ClientMeta(type):
     """
     Metaclass for pika clients
     """
-
     @property
     def channel(cls) -> BlockingConnection | None:
         """
@@ -108,7 +107,7 @@ class PikaClient(metaclass=ClientMeta):
         Call the appropriate method based on given method type.
         Get primary key 'id', 'cause the tables have the same pk 'id'
         :param data: data to be saved
-        :param method: method type (e.g. ['update', 'posts'])
+        :param method: method type (e.g. 'update_posts')
         :return:
         """
         process_function = PikaClient.preprocessing_data
