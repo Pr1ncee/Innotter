@@ -6,9 +6,9 @@ from rest_framework.status import HTTP_201_CREATED, HTTP_200_OK, HTTP_204_NO_CON
 from rest_framework import viewsets, mixins
 
 from authorization.permissions import IsModerator
-from .models import Page, Post
-from .enum_objects import Mode, Directory, PostMethods
-from .serializers import (
+from posts.models import Page, Post
+from posts.enum_objects import Mode, Directory, PostMethods
+from posts.serializers import (
     CreateUpdatePagesSerializer,
     ListUpdateMyPagesSerializer,
     DeletePageTagsSerializer,
@@ -19,7 +19,7 @@ from .serializers import (
     UpdateBlockPageSerializer,
     RetrievePostSerializer
 )
-from .services import (
+from posts.services import (
     create_page,
     update_page,
     follow_page,

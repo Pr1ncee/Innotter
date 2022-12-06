@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
 
 from botocore.exceptions import ClientError
 
-from .aws.ses_client import SESClient
+from posts.aws.ses_client import SESClient
 from innotter.celery import app
 
 

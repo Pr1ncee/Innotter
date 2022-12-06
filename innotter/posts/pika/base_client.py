@@ -8,7 +8,7 @@ username = settings.RABBITMQ_DEFAULT_USER
 password = settings.RABBITMQ_DEFAULT_PASS
 host = settings.RABBITMQ_HOST
 port = settings.RABBITMQ_PORT
-heartbeat, timeout = 600, 300
+heartbeat, timeout = settings.RABBITMQ_HEARTBEAT, settings.RABBITMQ_TIMEOUT
 
 
 class ClientMeta(type):

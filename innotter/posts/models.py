@@ -1,6 +1,6 @@
 from django.db import models
 
-from .managers import PageManager, PostManager
+from posts.managers import PageManager, PostManager
 from user.models import User
 
 

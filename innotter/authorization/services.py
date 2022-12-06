@@ -2,7 +2,7 @@ from django.db import IntegrityError
 from django.conf import settings
 from rest_framework import status
 
-from .auth_service import AuthService
+from authorization.auth_service import AuthService
 from posts.enum_objects import UserMethods
 from posts.pika.producer import PikaClient
 from user.models import User

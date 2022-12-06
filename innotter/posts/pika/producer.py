@@ -4,7 +4,7 @@ from django.conf import settings
 import pika
 
 from posts.enum_objects import PostMethods, PageMethods
-from .base_client import ClientMeta
+from posts.pika.base_client import ClientMeta
 
 
 exchange = settings.RABBITMQ_EXCHANGE_NAME

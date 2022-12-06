@@ -8,8 +8,8 @@ from django.db.models import Model
 from rest_framework.request import Request
 from rest_framework.serializers import ModelSerializer
 
-from .aws.s3_client import S3Client
-from .enum_objects import (
+from posts.aws.s3_client import S3Client
+from posts.enum_objects import (
     Mode,
     Directory,
     PostMethods,
@@ -17,7 +17,7 @@ from .enum_objects import (
 )
 from posts.pika.producer import PikaClient
 from posts.models import Page, Post
-from .tasks import send_new_post_notification_email
+from posts.tasks import send_new_post_notification_email
 from user.models import User
 
 
@@ -144,7 +144,7 @@ def update_page(tags_list: list,
             instance.image = file_url
     if tags_list:
         [instance.tags.add(tag) for tag in tags_list]
-    perform_save(serializer, fc=False)
+    perform_save(serializer)
     publish_page(instance, PageMethods.UPDATE)
 
 
@@ -161,7 +161,7 @@ def delete_object(instance: Model,
     """
     instance.delete()
     if serializer:
-        perform_save(serializer, fc=False)
+        perform_save(serializer)
 
     data = {'id': pk}
     publish_post(data, PostMethods.DELETE) if is_post else publish_page(instance, PageMethods.DELETE, pk=pk)
@@ -244,7 +244,7 @@ def send_email(request: Request, serializer: ModelSerializer) -> str:
     :param serializer: object of a Post model
     :return: result information of sending email.
     """
-    perform_save(serializer, fc=False)
+    perform_save(serializer)
     post = serializer.validated_data
     post_title = post.get('title', ' ')
     page_id = request.data['page']
@@ -261,15 +261,12 @@ def send_email(request: Request, serializer: ModelSerializer) -> str:
     return result
 
 
-def perform_save(obj: Any, fc: bool = True) -> None:
+def perform_save(obj: Any) -> None:
     """
     Take object and call both 'full_clean' and 'save' methods.
     Full clean method validates data to be saved.
     Save method saves data
     :param obj: any object, that has 'save' method
-    :param fc: bool flag whether to do full clean or not
     :return: None.
     """
-    if fc:
-        obj.full_clean()
     obj.save()

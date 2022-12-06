@@ -6,10 +6,10 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 from authorization.permissions import IsProfileOwner
 from authorization.services import publish_user
-from .models import User
+from user.models import User
 from posts.enum_objects import Directory, UserMethods
 from posts.services import save_image
-from .serializers import AdminUserSerializer, ListUsersSerializer, UpdateUserSerializer
+from user.serializers import AdminUserSerializer, ListUsersSerializer, UpdateUserSerializer
 
 
 class AdminUserViewSet(mixins.ListModelMixin,

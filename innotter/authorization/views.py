@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
-from .services import obtain_tokens, signup_user, refresh_user_token
+from authorization.serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
+from authorization.services import obtain_tokens, signup_user, refresh_user_token
 
 
 class UserTokenRefreshView(APIView):

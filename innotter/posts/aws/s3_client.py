@@ -3,7 +3,7 @@ from typing import BinaryIO
 from botocore.exceptions import ClientError
 from django.core.files.uploadedfile import InMemoryUploadedFile
 
-from .base_client import ClientMeta
+from posts.aws.base_client import ClientMeta
 
 
 file_obj_type = InMemoryUploadedFile | BinaryIO
