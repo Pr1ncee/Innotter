@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Page, Post
+from posts.models import Page, Post
 
 
 class CreateUpdatePagesSerializer(serializers.ModelSerializer):

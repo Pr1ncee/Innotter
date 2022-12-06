@@ -6,13 +6,15 @@ name = "pypi"
 [packages]
 django = "*"
 djangorestframework = "*"
-psycopg2 = "*"
 python-dotenv = "*"
 pyjwt = "*"
 celery = "*"
 boto3 = "*"
 django-filter = "*"
 django-storages = "*"
+fastapi = "*"
+psycopg2-binary = "*"
+pika = "*"
 
 [dev-packages]
 pytest-django = "*"

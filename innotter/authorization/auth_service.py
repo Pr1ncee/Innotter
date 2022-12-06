@@ -16,10 +16,10 @@ class AuthService:
     @staticmethod
     def signup_user(username: str, password: str, email: str) -> None:
         """
-        Validate serialized data, take user's creds from it, create a new user and save it.
-        :param username: given username.
-        :param password: given password.
-        :param email: given email.
+        Validate serialized data, take user's creds from it, create a new user and save it
+        :param username: given username
+        :param password: given password
+        :param email: given email
         :return: None.
         """
         user = User.objects.create_user(username=username, password=password, email=email)
@@ -29,10 +29,10 @@ class AuthService:
     @staticmethod
     def get_user_token(user_id: int, ttl: int) -> str:
         """
-        Take user id as a component of payload and time-to-live component to specify created token.
+        Take user id as a component of payload and time-to-live component to specify created token
         :param user_id: integer value, represents id of user
-        :param ttl: time-to-live integer value, represents token that will be created (access or refresh).
-        :return: valid token
+        :param ttl: time-to-live integer value, represents token that will be created (access or refresh)
+        :return: valid token.
         """
         payload = {"user_id": user_id,
                    "iss": "innotter",
@@ -44,8 +44,8 @@ class AuthService:
     @staticmethod
     def verify_user_token(token: str) -> tuple[dict[str], int, User | None]:
         """
-        Verify whether the given token is valid or not.
-        :param token: either access or refresh token.
+        Verify whether the given token is valid or not
+        :param token: either access or refresh token
         :return: data corresponding to the token.
         """
         user = None
@@ -54,20 +54,20 @@ class AuthService:
                 payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[SIGNING_METHOD])
                 user = User.objects.get(pk=payload['user_id'])
 
-                data = {'info': 'Token is valid'}
+                data = {'msg': 'Token is valid'}
                 status_code = status.HTTP_200_OK
             except jwt.ExpiredSignatureError:
-                data = {'info': 'Authentication token has expired'}
+                data = {'msg': 'Authentication token has expired'}
                 status_code = status.HTTP_401_UNAUTHORIZED
             except (jwt.DecodeError, jwt.InvalidTokenError):
-                data = {'info': 'Authentication has failed. Please send valid token'}
+                data = {'msg': 'Authentication has failed. Please send valid token'}
                 status_code = status.HTTP_401_UNAUTHORIZED
             except ObjectDoesNotExist:
-                data = {'info': 'Authentication has failed. The user does not exist'}
+                data = {'msg': 'Authentication has failed. The user does not exist'}
                 status_code = status.HTTP_401_UNAUTHORIZED
 
         else:
-            data = {'info': 'Authorization not found. Please send valid token in headers'}
+            data = {'msg': 'Authorization not found. Please send valid token in headers'}
             status_code = status.HTTP_400_BAD_REQUEST
 
         return data, status_code, user

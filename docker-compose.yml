@@ -5,8 +5,8 @@ services:
     image: postgres
     env_file:
       - ./innotter/.env
-    expose:
-      - "5432"
+    ports:
+      - "5432:5432"
     volumes:
       - ./data:/var/lib/postgresql
     healthcheck:
@@ -21,14 +21,15 @@ services:
       - "8000:8000"
     depends_on:
       - db
+      - celery
     env_file:
       - ./innotter/.env
     volumes:
-      - ./innotter:/app
+      - ./innotter:/app/main
 
-  rabbit:
+  rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbit
+    container_name: rabbitmq
     env_file:
       - ./innotter/.env
     ports:
@@ -41,6 +42,24 @@ services:
     env_file:
       - ./innotter/.env
     volumes:
-      - ./innotter:/app
+      - ./innotter:/app/main
     depends_on:
-      - rabbit
+      - rabbitmq
+
+  microservice:
+    build:
+      context: microservice
+      dockerfile: Dockerfile
+      target: main
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./microservice:/app/microservice
+
+  workers:
+    build:
+      context: microservice
+      dockerfile: Dockerfile
+      target: workers
+    volumes:
+      - ./microservice:/app/microservice
