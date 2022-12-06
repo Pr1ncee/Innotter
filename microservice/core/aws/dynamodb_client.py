@@ -1,6 +1,7 @@
 import logging
 
-from .base_client import ClientMeta
+from core.aws.base_client import ClientMeta
+from core.exceptions.base_exceptions import InvalidObjectTypeError
 
 
 logger = logging.getLogger(__name__)
@@ -98,5 +99,5 @@ class DynamoDBClient(metaclass=ClientMeta):
                 pk_type, pk = 'NULL', True
             case _:
                 logging.error("The given primary key's type is invalid")
-                raise KeyError("Define the right primary return_value key's type")
+                raise InvalidObjectTypeError()
         return pk_type, pk

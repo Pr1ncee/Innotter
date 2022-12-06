@@ -12,9 +12,9 @@ from pika.channel import Channel
 from pika.exceptions import AMQPConnectionError, StreamLostError, ChannelWrongStateError
 from pika.spec import BasicProperties, Basic
 
-from aws.dynamodb_client import DynamoDBClient
-from domain.enum_objects import PageMethods, PostMethods, UserMethods
-from settings import settings
+from core.aws.dynamodb_client import DynamoDBClient
+from core.enum_objects import PageMethods, PostMethods, UserMethods
+from core.settings import settings
 
 
 logger = logging.getLogger(__name__)
@@ -32,13 +32,13 @@ class ClientMeta(type):
         """
         if not getattr(cls, '_channel', None):
             try:
-                creds = pika.PlainCredentials(username=settings.USERNAME, password=settings.PASSWORD)
+                creds = pika.PlainCredentials(username=settings.RABBITMQ_USERNAME, password=settings.RABBITMQ_PASSWORD)
                 connection = pika.BlockingConnection(pika.ConnectionParameters(
-                    host=settings.HOST,
-                    port=settings.PORT,
+                    host=settings.RABBITMQ_HOST,
+                    port=settings.RABBITMQ_PORT,
                     credentials=creds,
-                    heartbeat=settings.HEARTBEAT,
-                    blocked_connection_timeout=settings.TIMEOUT)
+                    heartbeat=settings.RABBITMQ_HEARTBEAT,
+                    blocked_connection_timeout=settings.RABBITMQ_TIMEOUT)
                 )
                 new_channel = connection.channel()
                 setattr(cls, '_channel', new_channel)
@@ -103,40 +103,47 @@ class PikaClient(metaclass=ClientMeta):
         return processed_data
 
     @staticmethod
-    def save_data(data: dict, method: str):
+    def save_data(data: dict, method: str) -> int:
         """
         Call the appropriate method based on given method type.
         Get primary key 'id', 'cause the tables have the same pk 'id'
         :param data: data to be saved
         :param method: method type (e.g. 'update_posts')
-        :return:
+        :return: http status code.
         """
         process_function = PikaClient.preprocessing_data
         pk = settings.PK
+        response = None
         target_pk = int(data.get('id'))  # Convert to state the primary key's type
         routing_key = method.split('_')[-1]  # ['update', 'posts'] -> 'posts'
         try:
             match method:
-                case PostMethods.CREATE.value | PageMethods.CREATE.value | UserMethods.CREATE.value:
+                case (
+                    PostMethods.CREATE.value |
+                    PageMethods.CREATE.value |
+                    UserMethods.CREATE.value
+                ):
                     processed_data = process_function(data)
-                    db.put_item(table_name=routing_key, item=processed_data)
-                case \
-                    PostMethods.UPDATE.value | \
-                    PostMethods.LIKE.value | \
-                    PageMethods.UPDATE.value | \
-                    UserMethods.UPDATE.value:
+                    response = db.put_item(table_name=routing_key, item=processed_data)
+                case (
+                    PostMethods.UPDATE.value |
+                    PostMethods.LIKE.value |
+                    PageMethods.UPDATE.value |
+                    UserMethods.UPDATE.value
+                ):
                     processed_data = process_function(data, update=True)
-                    db.update_item(
+                    response = db.update_item(
                         table_name=routing_key,
                         pk=pk,
                         target_pk=target_pk,
                         fields_to_update=processed_data
                     )
                 case PostMethods.DELETE.value | PageMethods.DELETE.value:
-                    db.delete_item(
+                    response = db.delete_item(
                         table_name=routing_key,
                         pk=pk,
                         target_pk=target_pk
                     )
+            return response
         except ClientError:
             logger.error("Operation has failed, the given data wasn't valid")
