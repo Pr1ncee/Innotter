@@ -17,8 +17,8 @@ class CredentialsSerializer(serializers.Serializer):
                 'password': data['password']
             }
         except KeyError:
-            info = 'Both "username" and "password" are required'
-            raise serializers.ValidationError(info, code='authorization')
+            msg = 'Both "username" and "password" are required'
+            raise serializers.ValidationError(msg, code='authorization')
 
         user = authenticate(**authenticate_kwargs)
 
@@ -46,8 +46,8 @@ class RegisterSerializer(serializers.Serializer):
                 'email': data['email']
             }
         except KeyError:
-            info = 'All the fields are required.'
-            raise serializers.ValidationError(info, code='authorization')
+            msg = 'All the fields are required.'
+            raise serializers.ValidationError(msg, code='authorization')
 
         return authenticate_kwargs
 

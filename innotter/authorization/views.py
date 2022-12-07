@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 
-from .serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
-from .services import obtain_tokens, signup_user, refresh_user_token
+from authorization.serializers import TokenRefreshSerializer, RegisterSerializer, ObtainTokensSerializer
+from authorization.services import obtain_tokens, signup_user, refresh_user_token
 
 
 class UserTokenRefreshView(APIView):
@@ -50,9 +50,10 @@ class UserSignupView(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        username, password, email = serializer.validated_data['username'], \
-                                    serializer.validated_data['password'], \
-                                    serializer.validated_data['email']
+        username, password, email = \
+            serializer.validated_data['username'], \
+            serializer.validated_data['password'], \
+            serializer.validated_data['email']
 
         data, status_code = signup_user(username, password, email)
         return Response(data, status=status_code)

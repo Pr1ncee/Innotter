@@ -1,6 +1,6 @@
 from django.conf import settings
 
-from .base_client import ClientMeta
+from posts.aws.base_client import ClientMeta
 
 
 class SESClient(metaclass=ClientMeta):

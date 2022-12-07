@@ -1,9 +1,9 @@
-FROM python:3.10.5
+FROM python:3.10.5-slim
 
 ENV PYTHONUNBUFFERED 1
 ENV PYTHONDONTWRITEBYTECODE 1
 
-WORKDIR /app
+WORKDIR /app/main
 
 COPY Pipfile* ./
 
@@ -11,9 +11,6 @@ RUN pip3 install pipenv
 
 RUN pipenv install --system --deploy --ignore-pipfile
 
-COPY . /app
+COPY . /app/main
 
-RUN chown -R root /app
-RUN chmod +x /app/start-server.sh
-
-CMD ["/app/start-server.sh"]
+ENTRYPOINT ["/bin/bash", "/app/main/start-server.sh"]
