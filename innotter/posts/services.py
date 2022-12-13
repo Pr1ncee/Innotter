@@ -59,11 +59,14 @@ def publish_page(page: Page, method: PageMethods, pk: int | None = None) -> None
         data.update({
             'id': page.id,
             'owner_id': page.owner.id,
+            'owner_username': page.owner.username,
+            'owner_is_blocked': page.owner.is_blocked,
             'name': page.name,
             'uuid': page.uuid,
             'followers': page.followers.all().count(),
             'posts': page.posts.all().count(),
-            'unblock_date': page.unblock_date}
+            'unblock_date': page.unblock_date,
+            }
         )
     pika.routing_key(routing_key_stats)
     pika.publish(method, data)
@@ -144,7 +147,8 @@ def update_page(tags_list: list,
             instance.image = file_url
     if tags_list:
         [instance.tags.add(tag) for tag in tags_list]
-    perform_save(serializer)
+    if serializer:
+        perform_save(serializer)
     publish_page(instance, PageMethods.UPDATE)
 
 
@@ -169,7 +173,7 @@ def delete_object(instance: Model,
 
 def follow_page(request: Request, instance: Page) -> dict[str]:
     """
-    Follow page or send follow request based on page's and user's current statereturn_value
+    Follow page or send follow request based on page's and user's current state return_value
     :param request: send request from client
     :param instance: page to be followed.
     :return: dictionary with the one value, that represents result of the following action.
@@ -249,6 +253,7 @@ def send_email(request: Request, serializer: ModelSerializer) -> str:
     post_title = post.get('title', ' ')
     page_id = request.data['page']
     page = Page.objects.get(pk=page_id)
+
     post_id = page.posts.order_by('-id')[0].id
     user = request.user
     recipient_list = [email for email in page.followers.values_list('email', flat=True)]

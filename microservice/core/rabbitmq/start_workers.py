@@ -1,8 +1,7 @@
 import sys
-
 sys.path.append('/app/microservice/core/')
 
-from core.rabbitmq.consumer import PikaClient
+from rabbitmq.consumer import PikaClient
 from core.settings import settings
 
 

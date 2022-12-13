@@ -12,7 +12,7 @@ from pika.channel import Channel
 from pika.exceptions import AMQPConnectionError, StreamLostError, ChannelWrongStateError
 from pika.spec import BasicProperties, Basic
 
-from core.aws.dynamodb_client import DynamoDBClient
+from aws.dynamodb_client import DynamoDBClient
 from core.enum_objects import PageMethods, PostMethods, UserMethods
 from core.settings import settings
 
@@ -43,6 +43,7 @@ class ClientMeta(type):
                 new_channel = connection.channel()
                 setattr(cls, '_channel', new_channel)
             except AMQPConnectionError:
+                pass
                 logger.warning("The message broker hasn't started yet")
         return getattr(cls, '_channel')
 
@@ -75,6 +76,7 @@ class PikaClient(metaclass=ClientMeta):
             cls.channel.basic_consume(cls._queue, on_message_callback=cls.callback, auto_ack=True)
             cls.channel.start_consuming()
         except (StreamLostError, ChannelWrongStateError, AttributeError):
+            pass
             logging.warning('No items in the deque or the queue name may be invalid')
 
     @classmethod
@@ -124,6 +126,17 @@ class PikaClient(metaclass=ClientMeta):
                     UserMethods.CREATE.value
                 ):
                     processed_data = process_function(data)
+                    users_table = settings.USERS_NAME_TABLE
+                    user = db.get_item(table_name=users_table, pk=pk, target_pk=data.get('owner_id'))
+                    if user:
+                        pass
+                    else:
+                        user_data = {}
+                        for field, value in processed_data.items():
+                            if 'owner' in field:
+                                valid_field = ''.join(field.split('owner_'))
+                                user_data.update({valid_field: value})
+                        db.put_item(table_name=users_table, item=user_data)
                     response = db.put_item(table_name=routing_key, item=processed_data)
                 case (
                     PostMethods.UPDATE.value |

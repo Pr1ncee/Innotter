@@ -1,6 +1,6 @@
 import logging
 
-from core.aws.base_client import ClientMeta
+from .base_client import ClientMeta
 from core.exceptions.base_exceptions import InvalidObjectTypeError
 
 
@@ -10,6 +10,16 @@ logger = logging.getLogger(__name__)
 class DynamoDBClient(metaclass=ClientMeta):
     _service_name = 'dynamodb'
     _client = None
+
+    @classmethod
+    def create_table(cls, params: dict) -> dict:
+        """
+        Create a dynamodb table
+        :param params: attributes to create a new dynamodb table
+        :return: response dict.
+        """
+        response = cls.client.create_table(**params)
+        return response
 
     @classmethod
     def scan(cls, table_name: str) -> list | tuple:

@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 
 from authorization.permissions import IsProfileOwner
-from authorization.services import publish_user
 from user.models import User
 from posts.enum_objects import Directory, UserMethods
 from posts.services import save_image
@@ -74,10 +73,4 @@ class AdminUserViewSet(mixins.ListModelMixin,
             serializer.validated_data['image_path'] = file_url
 
         self.perform_update(serializer)
-        data = {
-            'id': instance.id,
-            'username': serializer.validated_data['username'],
-            'is_blocked': instance.is_blocked
-        }
-        publish_user(UserMethods.UPDATE, data)
         return Response(serializer.data)
