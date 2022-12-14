@@ -3,15 +3,12 @@ from django.conf import settings
 from rest_framework import status
 
 from authorization.auth_service import AuthService
-from posts.enum_objects import UserMethods
-from posts.pika.producer import PikaClient
 from user.models import User
 
 
 ACCESS_TOKEN_LIFE_TIME = settings.ACCESS_TOKEN_LIFE_TIME
 REFRESH_TOKEN_LIFE_TIME = settings.REFRESH_TOKEN_LIFE_TIME
 routing_key_pages = settings.RABBITMQ_STATS_ROUTING_KEY
-pika = PikaClient
 
 
 def refresh_user_token(refresh_token: str, user_id: int) -> tuple[dict[str, str], int]:
@@ -59,23 +56,10 @@ def signup_user(username: str, password: str, email: str) -> tuple[dict[str], in
     """
     try:
         AuthService.signup_user(username, password, email)
-        new_user = User.objects.get(username=username)
-        publish_user(UserMethods.CREATE, new_user)
+
         msg = {'msg': 'The user was successfully created'}
         status_code = status.HTTP_201_CREATED
     except IntegrityError:
         msg = {'msg': 'The username or the email has been already taken'}
         status_code = status.HTTP_400_BAD_REQUEST
     return msg, status_code
-
-
-def publish_user(method: UserMethods, body: User | dict):
-    pika.routing_key(routing_key_pages)
-    match body:
-        case dict():
-            data = body
-        case User():
-            data = {'id': body.id, 'username': body.username, 'is_blocked': body.is_blocked}
-        case _:
-            raise 'Invalid data'
-    pika.publish(method, data)

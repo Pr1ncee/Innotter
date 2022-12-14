@@ -9,7 +9,7 @@ from user.models import User
 
 
 JWT_SECRET_KEY = settings.JWT_SECRET_KEY
-SIGNING_METHOD = settings.SIGNING_METHOD
+JWT_SIGNING_METHOD = settings.JWT_SIGNING_METHOD
 
 
 class AuthService:
@@ -37,7 +37,7 @@ class AuthService:
         payload = {"user_id": user_id,
                    "iss": "innotter",
                    "exp": datetime.now(tz=timezone.utc) + timedelta(seconds=ttl)}
-        token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=SIGNING_METHOD)
+        token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_SIGNING_METHOD)
 
         return token
 
@@ -51,7 +51,7 @@ class AuthService:
         user = None
         if token:
             try:
-                payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[SIGNING_METHOD])
+                payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_SIGNING_METHOD])
                 user = User.objects.get(pk=payload['user_id'])
 
                 data = {'msg': 'Token is valid'}
